@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) enum JastorError {
+pub enum JastorError {
     #[error("unable to read file {0}")]
     FileReadError(String),
 

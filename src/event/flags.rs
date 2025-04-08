@@ -136,7 +136,7 @@ pub enum UnitSpecial {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum RaidFlag {
+pub enum RaidMarker {
     Star,
     Circle,
     Diamond,
@@ -148,8 +148,8 @@ pub enum RaidFlag {
     None,
 }
 
-impl RaidFlag {
-    pub fn parse(flag: u32) -> Self {
+impl RaidMarker {
+    pub fn parse_flag(flag: u32) -> Self {
         match flag & RAID_TARGET_MASK {
             RAID_TARGET_STAR => Self::Star,
             RAID_TARGET_CIRCLE => Self::Circle,
@@ -159,6 +159,20 @@ impl RaidFlag {
             RAID_TARGET_SQUARE => Self::Square,
             RAID_TARGET_CROSS => Self::Cross,
             RAID_TARGET_SKULL => Self::Skull,
+            _ => Self::None,
+        }
+    }
+
+    pub fn from_raw(value: u8) -> Self {
+        match value {
+            1 => Self::Star,
+            2 => Self::Circle,
+            3 => Self::Diamond,
+            4 => Self::Triangle,
+            5 => Self::Moon,
+            6 => Self::Square,
+            7 => Self::Cross,
+            8 => Self::Skull,
             _ => Self::None,
         }
     }
