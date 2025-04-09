@@ -43,55 +43,62 @@ const RAID_TARGET_CROSS: u32 = 0x00000040;
 const RAID_TARGET_SKULL: u32 = 0x00000080;
 const RAID_TARGET_MASK: u32 = 0x000000FF;
 
-pub struct UnitFlag;
+#[derive(Debug)]
+pub struct Unit {
+    pub affiliation: UnitAffiliation,
+    pub reaction: UnitReaction,
+    pub controller: UnitController,
+    pub unit_type: UnitType,
+    pub special: UnitSpecial,
+}
 
-impl UnitFlag {
-    pub fn affiliation(flag: u32) -> UnitAffiliation {
-        match flag & UNIT_AFFILIATION_MASK {
+impl Unit {
+    pub fn parse(flag: u32) -> Self {
+        let affiliation = match flag & UNIT_AFFILIATION_MASK {
             UNIT_AFFILIATION_MINE => UnitAffiliation::Mine,
             UNIT_AFFILIATION_PARTY => UnitAffiliation::Party,
             UNIT_AFFILIATION_RAID => UnitAffiliation::Raid,
             UNIT_AFFILIATION_OUTSIDER => UnitAffiliation::Outsider,
             _ => unreachable!("WoW ensures the flag is always valid"),
-        }
-    }
+        };
 
-    pub fn reaction(flag: u32) -> UnitReaction {
-        match flag & UNIT_REACTION_MASK {
+        let reaction = match flag & UNIT_REACTION_MASK {
             UNIT_REACTION_FRIENDLY => UnitReaction::Friendly,
             UNIT_REACTION_NEUTRAL => UnitReaction::Friendly,
             UNIT_REACTION_HOSTILE => UnitReaction::Friendly,
             _ => unreachable!("WoW ensures the flag is always valid"),
-        }
-    }
+        };
 
-    pub fn controller(flag: u32) -> UnitController {
-        match flag & UNIT_CONTROL_MASK {
+        let controller = match flag & UNIT_CONTROL_MASK {
             UNIT_CONTROL_PLAYER => UnitController::Player,
             UNIT_CONTROL_NPC => UnitController::Npc,
             _ => unreachable!("WoW ensures the flag is always valid"),
-        }
-    }
+        };
 
-    pub fn unit_type(flag: u32) -> UnitType {
-        match flag & UNIT_TYPE_MASK {
+        let unit_type = match flag & UNIT_TYPE_MASK {
             UNIT_TYPE_PLAYER => UnitType::Player,
             UNIT_TYPE_NPC => UnitType::Npc,
             UNIT_TYPE_PET => UnitType::Pet,
             UNIT_TYPE_GUARDIAN => UnitType::Guardian,
             UNIT_TYPE_OBJECT => UnitType::Object,
             _ => unreachable!("WoW ensures the flag is always valid"),
-        }
-    }
+        };
 
-    pub fn special(flag: u32) -> UnitSpecial {
-        match flag & UNIT_OBJECT_SPECIAL_MASK {
+        let special = match flag & UNIT_OBJECT_SPECIAL_MASK {
             UNIT_OBJECT_TARGET => UnitSpecial::Target,
             UNIT_OBJECT_FOCUS => UnitSpecial::Focus,
             UNIT_OBJECT_MAINTANK => UnitSpecial::MainTank,
             UNIT_OBJECT_MAINASSIST => UnitSpecial::MainAssist,
             UNIT_OBJECT_NONE => UnitSpecial::None,
             _ => unreachable!("WoW ensures the flag is always valid"),
+        };
+
+        Self {
+            affiliation,
+            reaction,
+            controller,
+            unit_type,
+            special,
         }
     }
 }

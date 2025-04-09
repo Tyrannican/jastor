@@ -5,17 +5,18 @@ use error::JastorError;
 use event::*;
 
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
 };
 
 #[derive(Default)]
-pub struct JastorParser {
+pub struct CombatLogParser {
     size: usize,
 }
 
-impl JastorParser {
+impl CombatLogParser {
     pub fn parse(&mut self, infile: impl AsRef<Path>) -> Result<(), JastorError> {
         let fh =
             File::open(infile.as_ref()).map_err(|e| JastorError::FileReadError(e.to_string()))?;
@@ -48,28 +49,33 @@ impl JastorParser {
         };
 
         let event = EventType::from_str(&event_type);
-        // Special Parsing logic for shorter events
-        if !event.is_general_combat_event() {
-            println!("{ts} {event_type} {args:?}\n");
-        } else {
-            // Parse General events
-            // (Base Params, Prefix Params, Advanced Params, Suffix Params)
-        }
+        // Advanced parameter fields:
+        // 1. GUID
+        // 2. Owner GUID (00000000000000000)
+        // 3. Current HP
+        // 4. Max HP
+        // 5. Attack Power
+        // 6. Spell Power
+        // 7 ? - Armor apparently but no dice
+        // 8. ? - Absorb shield
+        // 9. ?
+        // 10. ?
+        // 11. Power Type
+        // 12. Current Power
+        // 13. Max Power
+        // 14. Power Cost
+        // 15. X coord
+        // 16. Y Coord
+        // 17. Map ID
+        // 18. Facing Direction
+        // 19. Level (NPC) or iLvl (Player)
+        //
+        // Only Need GUID -> Max HP and Current Power -> Level
 
-        match event {
-            // EventType::EnvironmentalDamage => {
-            //     println!("{ts} {event_type} {args:?}\n");
-            // }
-            // EventType::DamageSplit => {
-            //     println!("{ts} {event_type} {args:?}\n");
-            // }
-            EventType::UnknownEvent(ref e) => {
-                return Err(JastorError::ParseError(format!(
-                    "unknown event type encountered: {e}"
-                )));
-            }
-            _ => {}
-        };
+        event.is_valid()?;
+        if event.skip() {
+            return Ok(());
+        }
 
         Ok(())
     }

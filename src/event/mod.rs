@@ -1,7 +1,11 @@
+use crate::error::JastorError;
+
 pub mod flags;
 
+// TODO: Use for type coerscion?
 pub trait Event {}
-#[derive(Debug, Clone, PartialEq, Eq)]
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EventType {
     SwingDamage,
     SwingDamageLanded,
@@ -150,33 +154,6 @@ pub enum EventType {
 }
 
 impl EventType {
-    pub fn is_general_combat_event(&self) -> bool {
-        match *self {
-            Self::EnchantApplied
-            | Self::EnchantRemoved
-            | Self::PartyKill
-            | Self::UnitDied
-            | Self::UnitDestroyed
-            | Self::UnitDissapates
-            | Self::CombatLogVersion
-            | Self::StaggerClear
-            | Self::ZoneChange
-            | Self::MapChange
-            | Self::EncounterStart
-            | Self::EncounterEnd
-            | Self::CombatantInfo
-            | Self::ArenaMatchStart
-            | Self::ArenaMatchEnd
-            | Self::ChallengeModeStart
-            | Self::ChallengeModeEnd
-            | Self::Emote
-            | Self::WorldMarkerPlaced
-            | Self::WorldMarkerRemoved
-            | Self::UnknownEvent(_) => false,
-            _ => true,
-        }
-    }
-
     pub fn from_str(value: &str) -> Self {
         match value {
             "SWING_DAMAGE" => Self::SwingDamage,
@@ -307,6 +284,133 @@ impl EventType {
             "WORLD_MARKER_PLACED" => Self::WorldMarkerPlaced,
             "WORLD_MARKER_REMOVED" => Self::WorldMarkerRemoved,
             _ => Self::UnknownEvent(value.to_string()),
+        }
+    }
+
+    pub fn skip(&self) -> bool {
+        match *self {
+            Self::Emote | Self::CombatantInfo => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_valid(&self) -> Result<(), JastorError> {
+        match *self {
+            Self::UnknownEvent(ref e) => {
+                return Err(JastorError::ParseError(format!(
+                    "unknown event type encountered: {e}"
+                )));
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn prefix_parameters(&self) -> usize {
+        match *self {
+            Self::SwingDamage | Self::SwingDamageLanded | Self::SwingMissed => 0,
+            Self::SpellDamage
+            | Self::DamageSplit
+            | Self::DamageShield // <- This needs checked
+            | Self::DamageShieldMissed // <- This needs checked
+            | Self::SpellDamageSupport
+            | Self::SpellMissed
+            | Self::SpellHeal
+            | Self::SpellHealAbsorbed
+            | Self::SpellAbsorbed
+            | Self::SpellEnergize
+            | Self::SpellDrain
+            | Self::SpellLeech
+            | Self::SpellInterrupt
+            | Self::SpellDispel
+            | Self::SpellDispelFailed
+            | Self::SpellStolen
+            | Self::SpellExtraAttacks
+            | Self::SpellAuraApplied
+            | Self::SpellAuraRemoved
+            | Self::SpellAuraAppliedDose
+            | Self::SpellAuraRemovedDose
+            | Self::SpellAuraRefresh
+            | Self::SpellAuraBroken
+            | Self::SpellAuraBrokenSpell
+            | Self::SpellCastStart
+            | Self::SpellCastSuccess
+            | Self::SpellCastFailed
+            | Self::SpellInstaKill
+            | Self::SpellDurabilityDamage
+            | Self::SpellDurabilityDamageAll
+            | Self::SpellCreate
+            | Self::SpellSummon
+            | Self::SpellResurrect
+            | Self::SpellEmpowerStart
+            | Self::SpellEmpowerEnd
+            | Self::SpellEmpowerInterrupt
+            | Self::SpellPeriodicDamage
+            | Self::SpellPeriodicDamageSupport
+            | Self::SpellPeriodicMissed
+            | Self::SpellPeriodicHeal
+            | Self::SpellPeriodicHealAbsorbed
+            | Self::SpellPeriodicAbsorbed
+            | Self::SpellPeriodicEnergize
+            | Self::SpellPeriodicDrain
+            | Self::SpellPeriodicLeech
+            | Self::SpellPeriodicInterrupt
+            | Self::SpellPeriodicDispel
+            | Self::SpellPeriodicDispelFailed
+            | Self::SpellPeriodicStolen
+            | Self::SpellPeriodicExtraAttacks
+            | Self::SpellPeriodicAuraApplied
+            | Self::SpellPeriodicAuraRemoved
+            | Self::SpellPeriodicAuraAppliedDose
+            | Self::SpellPeriodicAuraRemovedDose
+            | Self::SpellPeriodicAuraRefresh
+            | Self::SpellPeriodicAuraBroken
+            | Self::SpellPeriodicAuraBrokenSpell
+            | Self::SpellPeriodicCastStart
+            | Self::SpellPeriodicCastSuccess
+            | Self::SpellPeriodicCastFailed
+            | Self::SpellPeriodicInstaKill
+            | Self::SpellPeriodicDurabilityDamage
+            | Self::SpellPeriodicDurabilityDamageAll
+            | Self::SpellPeriodicCreate
+            | Self::SpellPeriodicSummon
+            | Self::SpellPeriodicResurrect
+            | Self::SpellPeriodicEmpowerStart
+            | Self::SpellPeriodicEmpowerEnd
+            | Self::SpellPeriodicEmpowerInterrupt
+            | Self::SpellBuildingDamage
+            | Self::SpellBuildingMissed
+            | Self::SpellBuildingHeal
+            | Self::SpellBuildingHealAbsorbed
+            | Self::SpellBuildingAbsorbed
+            | Self::SpellBuildingEnergize
+            | Self::SpellBuildingDrain
+            | Self::SpellBuildingLeech
+            | Self::SpellBuildingInterrupt
+            | Self::SpellBuildingDispel
+            | Self::SpellBuildingDispelFailed
+            | Self::SpellBuildingStolen
+            | Self::SpellBuildingExtraAttacks
+            | Self::SpellBuildingAuraApplied
+            | Self::SpellBuildingAuraRemoved
+            | Self::SpellBuildingAuraAppliedDose
+            | Self::SpellBuildingAuraRemovedDose
+            | Self::SpellBuildingAuraRefresh
+            | Self::SpellBuildingAuraBroken
+            | Self::SpellBuildingAuraBrokenSpell
+            | Self::SpellBuildingCastStart
+            | Self::SpellBuildingCastSuccess
+            | Self::SpellBuildingCastFailed
+            | Self::SpellBuildingInstaKill
+            | Self::SpellBuildingDurabilityDamage
+            | Self::SpellBuildingDurabilityDamageAll
+            | Self::SpellBuildingCreate
+            | Self::SpellBuildingSummon
+            | Self::SpellBuildingResurrect
+            | Self::SpellBuildingEmpowerStart
+            | Self::SpellBuildingEmpowerEnd
+            | Self::SpellBuildingEmpowerInterrupt => 3,
+            Self::EnvironmentalDamage => 1,
+            _ => 0,
         }
     }
 }
@@ -909,6 +1013,19 @@ impl std::fmt::Display for Affix {
             Self::XalBargainDevour => write!(f, "Affix: \"Xal'atath's Bargain: Devour\""),
             Self::XalBargainPulsar => write!(f, "Affix: \"Xal'atath's Bargain: Pulser\""),
             Self::Unknown(value) => write!(f, "Unknown affix id: {value}"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ContentDifficulty {
+    Unknown(u8),
+}
+
+impl From<u8> for ContentDifficulty {
+    fn from(value: u8) -> Self {
+        match value {
+            _ => Self::Unknown(value),
         }
     }
 }
