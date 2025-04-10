@@ -92,7 +92,7 @@ impl CombatLogParser {
         event_type: EventType,
         args: &str,
     ) -> Result<Event, JastorError> {
-        let handler = ParamHandler::simple(args);
+        let handler = ParamHandler::new(args);
 
         println!("Handling event: {event_type}");
         match event_type {
@@ -136,7 +136,6 @@ impl CombatLogParser {
                 return Ok(Event::StaggerClear { guid, value });
             }
             EventType::EncounterStart => {
-                // FIXME: Handle events with , in their name
                 let id = handler.as_number::<usize>(0)?;
                 let name = handler.as_string(1)?;
                 let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
