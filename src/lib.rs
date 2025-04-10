@@ -1,11 +1,13 @@
 pub mod error;
 pub mod event;
+pub(crate) mod util;
 
 use error::JastorError;
 use event::*;
+use flags::Difficulty;
+use util::param_handler::ParamHandler;
 
 use std::{
-    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
@@ -14,6 +16,7 @@ use std::{
 #[derive(Default)]
 pub struct CombatLogParser {
     size: usize,
+    events: Vec<Event>,
 }
 
 impl CombatLogParser {
@@ -48,7 +51,16 @@ impl CombatLogParser {
             )));
         };
 
-        let event = EventType::from_str(&event_type);
+        let event = EventType::from_str(&event_type)?;
+        if event.skip() {
+            return Ok(());
+        }
+
+        if event.has_short_parameters() {
+            let event = self.parse_short_event(event, args)?;
+            self.events.push(event);
+            return Ok(());
+        }
         // Advanced parameter fields:
         // 1. GUID
         // 2. Owner GUID (00000000000000000)
@@ -72,11 +84,113 @@ impl CombatLogParser {
         //
         // Only Need GUID -> Max HP and Current Power -> Level
 
-        event.is_valid()?;
-        if event.skip() {
-            return Ok(());
+        Ok(())
+    }
+
+    fn parse_short_event(
+        &mut self,
+        event_type: EventType,
+        args: &str,
+    ) -> Result<Event, JastorError> {
+        let handler = ParamHandler::simple(args);
+
+        println!("Handling event: {event_type}");
+        match event_type {
+            EventType::CombatLogVersion => {
+                let version = handler.as_number::<u8>(0)?;
+                let build = handler.as_string(4)?;
+
+                return Ok(Event::CombatLogVersion { version, build });
+            }
+            EventType::ZoneChange => {
+                let instance = handler.as_number::<usize>(0)?;
+                let name = handler.as_string(1)?;
+                let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
+
+                return Ok(Event::ZoneChange {
+                    id: instance,
+                    name,
+                    difficulty,
+                });
+            }
+            EventType::MapChange => {
+                let id = handler.as_number::<usize>(0)?;
+                let name = handler.as_string(1)?;
+                let x0 = handler.as_number::<f32>(2)?;
+                let x1 = handler.as_number::<f32>(2)?;
+                let y0 = handler.as_number::<f32>(2)?;
+                let y1 = handler.as_number::<f32>(2)?;
+
+                return Ok(Event::MapChange {
+                    id,
+                    name,
+                    x0,
+                    x1,
+                    y0,
+                    y1,
+                });
+            }
+            EventType::StaggerClear => {
+                let guid = handler.as_string(0)?;
+                let value = handler.as_number::<f32>(1)?;
+                return Ok(Event::StaggerClear { guid, value });
+            }
+            EventType::EncounterStart => {
+                // FIXME: Handle events with , in their name
+                let id = handler.as_number::<usize>(0)?;
+                let name = handler.as_string(1)?;
+                let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
+                let size = handler.as_number::<usize>(3)?;
+                let instance = handler.as_number::<usize>(4)?;
+
+                return Ok(Event::EncounterStart {
+                    id,
+                    name,
+                    difficulty,
+                    size,
+                    instance,
+                });
+            }
+            EventType::EncounterEnd => {
+                let id = handler.as_number::<usize>(0)?;
+                let name = handler.as_string(1)?;
+                let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
+                let size = handler.as_number::<usize>(3)?;
+                let success = match handler.as_number::<u8>(4)? {
+                    1 => true,
+                    _ => false,
+                };
+                let length = handler.as_number::<u64>(5)?;
+                return Ok(Event::EncounterEnd {
+                    id,
+                    name,
+                    difficulty,
+                    size,
+                    success,
+                    length,
+                });
+                // id: usize,
+                // name: String,
+                // difficulty: Difficulty,
+                // size: usize,
+                // success: bool,
+                // length: u64,
+            }
+            // Self::CombatLogVersion
+            // | Self::StaggerClear
+            // | Self::ArenaMatchStart
+            // | Self::ArenaMatchEnd
+            // | Self::EncounterStart
+            // | Self::EncounterEnd
+            // | Self::ChallengeModeStart
+            // | Self::ChallengeModeEnd
+            // | Self::WorldMarkerPlaced
+            // | Self::WorldMarkerRemoved
+            // | Self::MapChange
+            // | Self::ZoneChange => true,
+            _ => println!("{event_type} {args}"),
         }
 
-        Ok(())
+        todo!("implement event type {event_type}")
     }
 }
