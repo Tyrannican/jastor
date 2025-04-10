@@ -168,12 +168,32 @@ impl CombatLogParser {
                     success,
                     length,
                 });
-                // id: usize,
-                // name: String,
-                // difficulty: Difficulty,
-                // size: usize,
-                // success: bool,
-                // length: u64,
+            }
+            EventType::ArenaMatchStart => {
+                let id = handler.as_number::<usize>(0)?;
+                let unk = handler.as_number::<usize>(1)?;
+                let match_type = handler.as_string(2)?;
+                let team = handler.as_number::<usize>(3)?;
+
+                return Ok(Event::ArenaMatchStart {
+                    id,
+                    unk,
+                    match_type,
+                    team,
+                });
+            }
+            EventType::ArenaMatchEnd => {
+                let winner = handler.as_number::<usize>(0)?;
+                let duration = handler.as_number::<u64>(1)?;
+                let team_one_rating = handler.as_number::<usize>(2)?;
+                let team_two_rating = handler.as_number::<usize>(3)?;
+
+                return Ok(Event::ArenaMatchEnd {
+                    winner,
+                    duration,
+                    team_one_rating,
+                    team_two_rating,
+                });
             }
             // Self::CombatLogVersion
             // | Self::StaggerClear

@@ -111,4 +111,19 @@ mod param_handler_test {
         );
         println!("Params: {:?}", p.params);
     }
+
+    #[test]
+    fn challenge_mode() {
+        let p = ParamHandler::new("\"Mists of Tirna Scithe\",2290,375,11,[9,122,4,121]");
+        assert_eq!(
+            p.params,
+            vec![
+                "Mists of Tirna Scithe",
+                "2290",
+                "375",
+                "11",
+                "[9,122,4,121]"
+            ]
+        );
+    }
 }
