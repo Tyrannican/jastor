@@ -416,6 +416,10 @@ impl EventType {
                 | Self::ZoneChange
         )
     }
+
+    pub fn has_advanced_parameters(&self) -> bool {
+        matches!(*self, Self::SpellAuraApplied)
+    }
 }
 
 impl std::fmt::Display for EventType {

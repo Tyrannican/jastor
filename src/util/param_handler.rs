@@ -1,8 +1,12 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::{error::JastorError, event::EventType};
+use crate::{
+    error::JastorError,
+    event::{self, EventType},
+};
 
 const BASE_PARAMETERS_IDX: usize = 8;
+const ADVANCED_PARAM_LEN: usize = 19;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ParamHandler {
@@ -104,6 +108,15 @@ impl ParamHandler {
         };
         self.valid_idx(idx)?;
         Ok(&self.params[BASE_PARAMETERS_IDX..BASE_PARAMETERS_IDX + n_prefix])
+    }
+
+    pub fn advanced_parameters(&self, event_type: EventType) -> Result<&[String], JastorError> {
+        let idx = match event_type.prefix_parameters() {
+            0 => BASE_PARAMETERS_IDX,
+            n => BASE_PARAMETERS_IDX + n,
+        };
+        self.valid_idx(idx)?;
+        Ok(&self.params[idx..idx + ADVANCED_PARAM_LEN])
     }
 
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
