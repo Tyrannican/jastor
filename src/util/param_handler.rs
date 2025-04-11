@@ -78,6 +78,18 @@ impl ParamHandler {
             .map_err(|e| JastorError::ParseError(e.to_string()))
     }
 
+    pub fn success_flag(&self, idx: usize) -> Result<bool, JastorError> {
+        self.valid_idx(idx)?;
+        let flag = self.params[idx]
+            .parse::<u8>()
+            .map_err(|e| JastorError::ParseError(e.to_string()))?;
+
+        match flag {
+            1 => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(

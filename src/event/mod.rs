@@ -67,4 +67,13 @@ pub enum Event {
         keystone_level: usize,
         duration: u64,
     },
+    WorldMarkerPlaced {
+        instance: usize,
+        marker: RaidMarker,
+        x: f32,
+        y: f32,
+    },
+    WorldMarkerRemoved {
+        marker: RaidMarker,
+    },
 }

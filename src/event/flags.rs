@@ -169,8 +169,10 @@ impl RaidMarker {
             _ => Self::None,
         }
     }
+}
 
-    pub fn from_raw(value: u8) -> Self {
+impl From<u8> for RaidMarker {
+    fn from(value: u8) -> Self {
         match value {
             1 => Self::Star,
             2 => Self::Circle,

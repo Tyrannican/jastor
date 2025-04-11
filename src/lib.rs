@@ -4,7 +4,7 @@ pub(crate) mod util;
 
 use error::JastorError;
 use event::*;
-use flags::Difficulty;
+use flags::*;
 use util::param_handler::ParamHandler;
 
 use std::{
@@ -155,10 +155,7 @@ impl CombatLogParser {
                 let name = handler.as_string(1)?;
                 let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
                 let size = handler.as_number::<usize>(3)?;
-                let success = match handler.as_number::<u8>(4)? {
-                    1 => true,
-                    _ => false,
-                };
+                let success = handler.success_flag(4)?;
                 let length = handler.as_number::<u64>(5)?;
                 return Ok(Event::EncounterEnd {
                     id,
@@ -195,18 +192,56 @@ impl CombatLogParser {
                     team_two_rating,
                 });
             }
-            // Self::CombatLogVersion
-            // | Self::StaggerClear
-            // | Self::ArenaMatchStart
-            // | Self::ArenaMatchEnd
-            // | Self::EncounterStart
-            // | Self::EncounterEnd
-            // | Self::ChallengeModeStart
-            // | Self::ChallengeModeEnd
-            // | Self::WorldMarkerPlaced
-            // | Self::WorldMarkerRemoved
-            // | Self::MapChange
-            // | Self::ZoneChange => true,
+            EventType::ChallengeModeStart => {
+                let name = handler.as_string(0)?;
+                let id = handler.as_number::<usize>(1)?;
+                let challenge_id = handler.as_number::<usize>(2)?;
+                let keystone_level = handler.as_number::<usize>(3)?;
+                let affix_list = serde_json::from_str::<Vec<u16>>(&handler.as_string(4)?)
+                    .map_err(|e| JastorError::ParseError(e.to_string()))?;
+                let affixes = affix_list
+                    .into_iter()
+                    .map(|a| Affix::from(a))
+                    .collect::<Vec<Affix>>();
+
+                return Ok(Event::ChallengeModeStart {
+                    name,
+                    id,
+                    challenge_id,
+                    keystone_level,
+                    affixes,
+                });
+            }
+            EventType::ChallengeModeEnd => {
+                let id = handler.as_number::<usize>(0)?;
+                let success = handler.success_flag(1)?;
+                let keystone_level = handler.as_number::<usize>(2)?;
+                let duration = handler.as_number::<u64>(3)?;
+
+                return Ok(Event::ChallengeModeEnd {
+                    id,
+                    success,
+                    keystone_level,
+                    duration,
+                });
+            }
+            EventType::WorldMarkerPlaced => {
+                let instance = handler.as_number::<usize>(0)?;
+                let marker = RaidMarker::from(handler.as_number::<u8>(1)?);
+                let x = handler.as_number::<f32>(2)?;
+                let y = handler.as_number::<f32>(3)?;
+
+                return Ok(Event::WorldMarkerPlaced {
+                    instance,
+                    marker,
+                    x,
+                    y,
+                });
+            }
+            EventType::WorldMarkerRemoved => {
+                let marker = RaidMarker::from(handler.as_number::<u8>(0)?);
+                return Ok(Event::WorldMarkerRemoved { marker });
+            }
             _ => println!("{event_type} {args}"),
         }
 
