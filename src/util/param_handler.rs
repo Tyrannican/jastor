@@ -2,6 +2,8 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::error::JastorError;
 
+const BASE_PARAMETERS_IDX: usize = 8;
+
 #[derive(Debug, Clone)]
 pub(crate) struct ParamHandler {
     pub(crate) params: Vec<String>,
@@ -88,6 +90,21 @@ impl ParamHandler {
             1 => Ok(true),
             _ => Ok(false),
         }
+    }
+
+    pub fn base_params(&self) -> Result<&[String], JastorError> {
+        self.valid_idx(BASE_PARAMETERS_IDX)?;
+        Ok(&self.params[..BASE_PARAMETERS_IDX])
+    }
+
+    pub fn prefix_parameters(&self, number: usize) -> Result<&[String], JastorError> {
+        if number == 0 {
+            self.valid_idx(BASE_PARAMETERS_IDX)?
+        } else {
+            self.valid_idx(BASE_PARAMETERS_IDX + (number - 1))?;
+        }
+
+        Ok(&self.params[BASE_PARAMETERS_IDX..BASE_PARAMETERS_IDX + number])
     }
 
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {

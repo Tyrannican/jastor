@@ -28,7 +28,7 @@ impl CombatLogParser {
 
         for line in reader.lines() {
             let line = line.map_err(|e| JastorError::ParseError(e.to_string()))?;
-            self.parse_event(&line)?;
+            self.parse_single_event(&line)?;
             self.size += 1;
         }
 
@@ -39,7 +39,7 @@ impl CombatLogParser {
         self.size
     }
 
-    fn parse_event(&mut self, line: &str) -> Result<(), JastorError> {
+    fn parse_single_event(&mut self, line: &str) -> Result<(), JastorError> {
         let Some((_, event)) = line.split_once("  ") else {
             return Err(JastorError::ParseError(format!(
                 "expected timestamp with 2 spaces - got {line}"
@@ -58,11 +58,25 @@ impl CombatLogParser {
         }
 
         if event.has_short_parameters() {
-            let event = self.parse_short_event(event, args)?;
-            self.events.push(event);
-            return Ok(());
+            return self.parse_short_event(event, args);
         }
 
+        self.parse_combat_event(event, args)
+    }
+
+    fn parse_combat_event(&mut self, event_type: EventType, args: &str) -> Result<(), JastorError> {
+        let handler = ParamHandler::new(args);
+
+        match event_type {
+            EventType::SwingDamage | EventType::SwingDamageLanded | EventType::SwingMissed => {
+                let base_params = handler.base_params()?;
+                let n_prefix_params = event_type.prefix_parameters();
+                let prefix_params = handler.prefix_parameters(n_prefix_params)?;
+                println!("{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}");
+                println!();
+            }
+            _ => {}
+        }
         // Advanced parameter fields:
         // 1. GUID
         // 2. Owner GUID (00000000000000000)
@@ -85,31 +99,24 @@ impl CombatLogParser {
         // 19. Level (NPC) or iLvl (Player)
         //
         // Only Need GUID -> Max HP and Current Power -> Level
-
         Ok(())
     }
 
-    fn parse_short_event(
-        &mut self,
-        event_type: EventType,
-        args: &str,
-    ) -> Result<Event, JastorError> {
+    fn parse_short_event(&mut self, event_type: EventType, args: &str) -> Result<(), JastorError> {
         let handler = ParamHandler::new(args);
 
-        println!("Handling event: {event_type}");
         match event_type {
             EventType::CombatLogVersion => {
                 let version = handler.as_number::<u8>(0)?;
                 let build = handler.as_string(4)?;
-
-                return Ok(Event::CombatLogVersion { version, build });
+                self.events.push(Event::CombatLogVersion { version, build });
             }
             EventType::ZoneChange => {
                 let instance = handler.as_number::<usize>(0)?;
                 let name = handler.as_string(1)?;
                 let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
 
-                return Ok(Event::ZoneChange {
+                self.events.push(Event::ZoneChange {
                     id: instance,
                     name,
                     difficulty,
@@ -123,7 +130,7 @@ impl CombatLogParser {
                 let y0 = handler.as_number::<f32>(2)?;
                 let y1 = handler.as_number::<f32>(2)?;
 
-                return Ok(Event::MapChange {
+                self.events.push(Event::MapChange {
                     id,
                     name,
                     x0,
@@ -135,7 +142,7 @@ impl CombatLogParser {
             EventType::StaggerClear => {
                 let guid = handler.as_string(0)?;
                 let value = handler.as_number::<f32>(1)?;
-                return Ok(Event::StaggerClear { guid, value });
+                self.events.push(Event::StaggerClear { guid, value });
             }
             EventType::EncounterStart => {
                 let id = handler.as_number::<usize>(0)?;
@@ -144,7 +151,7 @@ impl CombatLogParser {
                 let size = handler.as_number::<usize>(3)?;
                 let instance = handler.as_number::<usize>(4)?;
 
-                return Ok(Event::EncounterStart {
+                self.events.push(Event::EncounterStart {
                     id,
                     name,
                     difficulty,
@@ -159,7 +166,7 @@ impl CombatLogParser {
                 let size = handler.as_number::<usize>(3)?;
                 let success = handler.success_flag(4)?;
                 let length = handler.as_number::<u64>(5)?;
-                return Ok(Event::EncounterEnd {
+                self.events.push(Event::EncounterEnd {
                     id,
                     name,
                     difficulty,
@@ -174,7 +181,7 @@ impl CombatLogParser {
                 let match_type = handler.as_string(2)?;
                 let team = handler.as_number::<usize>(3)?;
 
-                return Ok(Event::ArenaMatchStart {
+                self.events.push(Event::ArenaMatchStart {
                     id,
                     unk,
                     match_type,
@@ -187,7 +194,7 @@ impl CombatLogParser {
                 let team_one_rating = handler.as_number::<usize>(2)?;
                 let team_two_rating = handler.as_number::<usize>(3)?;
 
-                return Ok(Event::ArenaMatchEnd {
+                self.events.push(Event::ArenaMatchEnd {
                     winner,
                     duration,
                     team_one_rating,
@@ -206,7 +213,7 @@ impl CombatLogParser {
                     .map(Affix::from)
                     .collect::<Vec<Affix>>();
 
-                return Ok(Event::ChallengeModeStart {
+                self.events.push(Event::ChallengeModeStart {
                     name,
                     id,
                     challenge_id,
@@ -220,7 +227,7 @@ impl CombatLogParser {
                 let keystone_level = handler.as_number::<usize>(2)?;
                 let duration = handler.as_number::<u64>(3)?;
 
-                return Ok(Event::ChallengeModeEnd {
+                self.events.push(Event::ChallengeModeEnd {
                     id,
                     success,
                     keystone_level,
@@ -233,7 +240,7 @@ impl CombatLogParser {
                 let x = handler.as_number::<f32>(2)?;
                 let y = handler.as_number::<f32>(3)?;
 
-                return Ok(Event::WorldMarkerPlaced {
+                self.events.push(Event::WorldMarkerPlaced {
                     instance,
                     marker,
                     x,
@@ -242,11 +249,11 @@ impl CombatLogParser {
             }
             EventType::WorldMarkerRemoved => {
                 let marker = RaidMarker::from(handler.as_number::<u8>(0)?);
-                return Ok(Event::WorldMarkerRemoved { marker });
+                self.events.push(Event::WorldMarkerRemoved { marker });
             }
             _ => println!("{event_type} {args}"),
         }
 
-        todo!("implement event type {event_type}")
+        Ok(())
     }
 }
