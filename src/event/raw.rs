@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::error::JastorError;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -145,9 +147,10 @@ pub enum EventType {
     WorldMarkerRemoved,
 }
 
-impl EventType {
-    pub fn from_str(value: &str) -> Result<Self, JastorError> {
-        match value {
+impl FromStr for EventType {
+    type Err = JastorError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "SWING_DAMAGE" => Ok(Self::SwingDamage),
             "SWING_DAMAGE_LANDED" => Ok(Self::SwingDamageLanded),
             "SWING_MISSED" => Ok(Self::SwingMissed),
@@ -275,15 +278,14 @@ impl EventType {
             "EMOTE" => Ok(Self::Emote),
             "WORLD_MARKER_PLACED" => Ok(Self::WorldMarkerPlaced),
             "WORLD_MARKER_REMOVED" => Ok(Self::WorldMarkerRemoved),
-            _ => Err(JastorError::UnknownEvent(value.to_string())),
+            _ => Err(JastorError::UnknownEvent(s.to_string())),
         }
     }
+}
 
+impl EventType {
     pub fn skip(&self) -> bool {
-        match *self {
-            Self::Emote | Self::CombatantInfo => true,
-            _ => false,
-        }
+        matches!(*self, Self::Emote | Self::CombatantInfo)
     }
 
     pub fn prefix_parameters(&self) -> usize {
@@ -396,21 +398,21 @@ impl EventType {
     }
 
     pub fn has_short_parameters(&self) -> bool {
-        match *self {
+        matches!(
+            *self,
             Self::CombatLogVersion
-            | Self::StaggerClear
-            | Self::ArenaMatchStart
-            | Self::ArenaMatchEnd
-            | Self::EncounterStart
-            | Self::EncounterEnd
-            | Self::ChallengeModeStart
-            | Self::ChallengeModeEnd
-            | Self::WorldMarkerPlaced
-            | Self::WorldMarkerRemoved
-            | Self::MapChange
-            | Self::ZoneChange => true,
-            _ => false,
-        }
+                | Self::StaggerClear
+                | Self::ArenaMatchStart
+                | Self::ArenaMatchEnd
+                | Self::EncounterStart
+                | Self::EncounterEnd
+                | Self::ChallengeModeStart
+                | Self::ChallengeModeEnd
+                | Self::WorldMarkerPlaced
+                | Self::WorldMarkerRemoved
+                | Self::MapChange
+                | Self::ZoneChange
+        )
     }
 }
 
@@ -762,9 +764,10 @@ pub enum MissType {
     Resist,
 }
 
-impl MissType {
-    pub fn from_str(value: &str) -> Result<Self, JastorError> {
-        match value {
+impl FromStr for MissType {
+    type Err = JastorError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "ABSORB" => Ok(Self::Absorb),
             "BLOCK" => Ok(Self::Block),
             "DEFLECT" => Ok(Self::Deflect),
@@ -775,7 +778,7 @@ impl MissType {
             "PARRY" => Ok(Self::Parry),
             "REFLECT" => Ok(Self::Reflect),
             "RESIST" => Ok(Self::Resist),
-            _ => Err(JastorError::UnknownValue(format!("MissType: {value}"))),
+            _ => Err(JastorError::UnknownValue(format!("MissType: {s}"))),
         }
     }
 }
@@ -803,12 +806,13 @@ pub enum AuraType {
     Debuff,
 }
 
-impl AuraType {
-    pub fn from_str(value: &str) -> Result<Self, JastorError> {
-        match value {
+impl FromStr for AuraType {
+    type Err = JastorError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "BUFF" => Ok(Self::Buff),
             "DEBUFF" => Ok(Self::Debuff),
-            _ => Err(JastorError::UnknownValue(format!("AuraType: {value}"))),
+            _ => Err(JastorError::UnknownValue(format!("AuraType: {s}"))),
         }
     }
 }
@@ -832,18 +836,17 @@ pub enum EnvironmentalType {
     Slime,
 }
 
-impl EnvironmentalType {
-    pub fn from_str(value: &str) -> Result<Self, JastorError> {
-        match value {
+impl FromStr for EnvironmentalType {
+    type Err = JastorError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "Drowning" => Ok(Self::Drowning),
             "Falling" => Ok(Self::Falling),
             "Fatigue" => Ok(Self::Fatigue),
             "Fire" => Ok(Self::Fire),
             "Lava" => Ok(Self::Lava),
             "Slime" => Ok(Self::Slime),
-            _ => Err(JastorError::UnknownValue(format!(
-                "EnvironmentalType: {value}"
-            ))),
+            _ => Err(JastorError::UnknownValue(format!("EnvironmentalType: {s}"))),
         }
     }
 }

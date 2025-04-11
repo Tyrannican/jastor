@@ -11,6 +11,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
+    str::FromStr,
 };
 
 #[derive(Default)]
@@ -39,7 +40,7 @@ impl CombatLogParser {
     }
 
     fn parse_event(&mut self, line: &str) -> Result<(), JastorError> {
-        let Some((ts, event)) = line.split_once("  ") else {
+        let Some((_, event)) = line.split_once("  ") else {
             return Err(JastorError::ParseError(format!(
                 "expected timestamp with 2 spaces - got {line}"
             )));
@@ -51,7 +52,7 @@ impl CombatLogParser {
             )));
         };
 
-        let event = EventType::from_str(&event_type)?;
+        let event = EventType::from_str(event_type)?;
         if event.skip() {
             return Ok(());
         }
@@ -61,6 +62,7 @@ impl CombatLogParser {
             self.events.push(event);
             return Ok(());
         }
+
         // Advanced parameter fields:
         // 1. GUID
         // 2. Owner GUID (00000000000000000)
@@ -201,7 +203,7 @@ impl CombatLogParser {
                     .map_err(|e| JastorError::ParseError(e.to_string()))?;
                 let affixes = affix_list
                     .into_iter()
-                    .map(|a| Affix::from(a))
+                    .map(Affix::from)
                     .collect::<Vec<Affix>>();
 
                 return Ok(Event::ChallengeModeStart {
