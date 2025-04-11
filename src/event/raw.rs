@@ -13,6 +13,7 @@ pub enum EventType {
     SpellDamageSupport,
     SpellMissed,
     SpellHeal,
+    SpellHealSupport,
     SpellHealAbsorbed,
     SpellAbsorbed,
     SpellEnergize,
@@ -161,6 +162,7 @@ impl FromStr for EventType {
             "SPELL_DAMAGE_SUPPORT" => Ok(Self::SpellDamageSupport),
             "SPELL_MISSED" => Ok(Self::SpellMissed),
             "SPELL_HEAL" => Ok(Self::SpellHeal),
+            "SPELL_HEAL_SUPPORT" => Ok(Self::SpellHealSupport),
             "SPELL_HEAL_ABSORBED" => Ok(Self::SpellHealAbsorbed),
             "SPELL_ABSORBED" => Ok(Self::SpellAbsorbed),
             "SPELL_ENERGIZE" => Ok(Self::SpellEnergize),
@@ -298,6 +300,7 @@ impl EventType {
             | Self::SpellDamageSupport
             | Self::SpellMissed
             | Self::SpellHeal
+            | Self::SpellHealSupport
             | Self::SpellHealAbsorbed
             | Self::SpellAbsorbed
             | Self::SpellEnergize
@@ -429,6 +432,7 @@ impl std::fmt::Display for EventType {
             Self::SpellDamageSupport => write!(f, "SPELL_DAMAGE_SUPPORT"),
             Self::SpellMissed => write!(f, "SPELL_MISSED"),
             Self::SpellHeal => write!(f, "SPELL_HEAL"),
+            Self::SpellHealSupport => write!(f, "SPELL_HEAL_SUPPORT"),
             Self::SpellHealAbsorbed => write!(f, "SPELL_HEAL_ABSORBED"),
             Self::SpellAbsorbed => write!(f, "SPELL_ABSORBED"),
             Self::SpellEnergize => write!(f, "SPELL_ENERGIZE"),
