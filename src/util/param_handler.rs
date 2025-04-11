@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::error::JastorError;
+use crate::{error::JastorError, event::EventType};
 
 const BASE_PARAMETERS_IDX: usize = 8;
 
@@ -97,14 +97,13 @@ impl ParamHandler {
         Ok(&self.params[..BASE_PARAMETERS_IDX])
     }
 
-    pub fn prefix_parameters(&self, number: usize) -> Result<&[String], JastorError> {
-        if number == 0 {
-            self.valid_idx(BASE_PARAMETERS_IDX)?
-        } else {
-            self.valid_idx(BASE_PARAMETERS_IDX + (number - 1))?;
-        }
-
-        Ok(&self.params[BASE_PARAMETERS_IDX..BASE_PARAMETERS_IDX + number])
+    pub fn prefix_parameters(&self, event_type: EventType) -> Result<&[String], JastorError> {
+        let (n_prefix, idx) = match event_type.prefix_parameters() {
+            0 => (0, BASE_PARAMETERS_IDX),
+            n => (n, BASE_PARAMETERS_IDX + (n - 1)),
+        };
+        self.valid_idx(idx)?;
+        Ok(&self.params[BASE_PARAMETERS_IDX..BASE_PARAMETERS_IDX + n_prefix])
     }
 
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {

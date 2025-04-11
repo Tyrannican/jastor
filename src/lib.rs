@@ -67,16 +67,11 @@ impl CombatLogParser {
     fn parse_combat_event(&mut self, event_type: EventType, args: &str) -> Result<(), JastorError> {
         let handler = ParamHandler::new(args);
 
-        match event_type {
-            EventType::SwingDamage | EventType::SwingDamageLanded | EventType::SwingMissed => {
-                let base_params = handler.base_params()?;
-                let n_prefix_params = event_type.prefix_parameters();
-                let prefix_params = handler.prefix_parameters(n_prefix_params)?;
-                println!("{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}");
-                println!();
-            }
-            _ => {}
-        }
+        let base_params = handler.base_params()?;
+        let prefix_params = handler.prefix_parameters(event_type)?;
+
+        println!("{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}");
+        println!();
         // Advanced parameter fields:
         // 1. GUID
         // 2. Owner GUID (00000000000000000)

@@ -292,7 +292,7 @@ impl EventType {
 
     pub fn prefix_parameters(&self) -> usize {
         match *self {
-            Self::SwingDamage | Self::SwingDamageLanded | Self::SwingMissed => 0,
+            // Self::SwingDamage | Self::SwingDamageLanded | Self::SwingMissed | Self::EnvironmentalDamage => 0,
             Self::SpellDamage
             | Self::DamageSplit
             | Self::DamageShield // <- This needs checked
@@ -395,7 +395,6 @@ impl EventType {
             | Self::SpellBuildingEmpowerStart
             | Self::SpellBuildingEmpowerEnd
             | Self::SpellBuildingEmpowerInterrupt => 3,
-            Self::EnvironmentalDamage => 1,
             _ => 0,
         }
     }
