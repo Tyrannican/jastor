@@ -5,7 +5,7 @@ pub(crate) mod util;
 use error::JastorError;
 use event::*;
 use flags::*;
-use util::param_handler::ParamHandler;
+use util::param_handler::{ArgumentHandler, ParameterHandler};
 
 use std::{
     fs::File,
@@ -65,19 +65,15 @@ impl CombatLogParser {
     }
 
     fn parse_combat_event(&mut self, event_type: EventType, args: &str) -> Result<(), JastorError> {
-        let handler = ParamHandler::new(args);
+        let handler = ArgumentHandler::new(args);
 
         let base_params = handler.base_params()?;
         let prefix_params = handler.prefix_parameters(event_type)?;
-        let advanced_params = if event_type.has_no_advanced_parameters() {
-            None
-        } else {
-            Some(handler.advanced_parameters(event_type)?)
-        };
-        let additional_params = handler.additional_parameters(event_type)?;
+        let advanced_params = handler.advanced_parameters(event_type)?;
+        let suffix_params = handler.additional_parameters(event_type)?;
 
         println!(
-            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}\nAdditional Params: {additional_params:?}"
+            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}\nSuffix Params: {suffix_params:?}"
         );
         println!();
         // Advanced parameter fields:
@@ -106,7 +102,7 @@ impl CombatLogParser {
     }
 
     fn parse_short_event(&mut self, event_type: EventType, args: &str) -> Result<(), JastorError> {
-        let handler = ParamHandler::new(args);
+        let handler = ArgumentHandler::new(args);
 
         match event_type {
             EventType::CombatLogVersion => {

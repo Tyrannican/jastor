@@ -4,6 +4,8 @@ pub mod raw;
 use flags::*;
 pub use raw::*;
 
+use crate::error::JastorError;
+
 #[derive(Debug, PartialEq)]
 pub enum Event {
     CombatLogVersion {
@@ -77,3 +79,26 @@ pub enum Event {
         marker: RaidMarker,
     },
 }
+
+// Advanced parameter fields:
+// 1. GUID
+// 2. Owner GUID (00000000000000000)
+// 3. Current HP
+// 4. Max HP
+// 5. Attack Power
+// 6. Spell Power
+// 7 ? - Armor apparently but no dice
+// 8. ? - Absorb shield
+// 9. ?
+// 10. ?
+// 11. Power Type
+// 12. Current Power
+// 13. Max Power
+// 14. Power Cost
+// 15. X coord
+// 16. Y Coord
+// 17. Map ID
+// 18. Facing Direction
+// 19. Level (NPC) or iLvl (Player)
+//
+// Only Need GUID -> Max HP and Current Power -> Level
