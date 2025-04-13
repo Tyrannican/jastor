@@ -417,8 +417,39 @@ impl EventType {
         )
     }
 
-    pub fn has_advanced_parameters(&self) -> bool {
-        matches!(*self, Self::SpellAuraApplied)
+    pub fn has_no_advanced_parameters(&self) -> bool {
+        matches!(
+            *self,
+            Self::SpellAuraApplied
+                | Self::SpellAuraRemoved
+                | Self::SpellAuraRefresh
+                | Self::SpellCastStart
+                | Self::SpellSummon
+                | Self::SpellAuraAppliedDose
+                | Self::SpellAuraRemovedDose
+                | Self::SpellAuraBrokenSpell
+                | Self::SpellAuraBroken
+                | Self::SpellAbsorbed
+                | Self::SpellDispel
+                | Self::SpellPeriodicMissed
+                | Self::SpellHealAbsorbed
+                | Self::SwingMissed
+                | Self::RangeMissed
+                | Self::SpellMissed
+                | Self::SpellResurrect
+                | Self::SpellStolen
+                | Self::SpellCreate
+                | Self::SpellEmpowerStart
+                | Self::SpellEmpowerEnd
+                | Self::SpellEmpowerInterrupt
+                | Self::SpellCastFailed
+                | Self::UnitDied
+                | Self::UnitDestroyed
+                | Self::SpellInstaKill
+                | Self::PartyKill
+                | Self::SpellInterrupt
+                | Self::SpellExtraAttacks
+        )
     }
 }
 

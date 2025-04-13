@@ -1,9 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::{
-    error::JastorError,
-    event::{self, EventType},
-};
+use crate::{error::JastorError, event::EventType};
 
 const BASE_PARAMETERS_IDX: usize = 8;
 const ADVANCED_PARAM_LEN: usize = 19;
@@ -15,19 +12,12 @@ pub(crate) struct ParamHandler {
 
 impl ParamHandler {
     pub fn new(args: &str) -> Self {
-        // Strategy:
-        // We want to break on ','
-        // We want to NOT break on inner strings (e.g. \"Mug'Zee, Heads of Security\")
-        // - This should be turned into "Mug'zee, Heads of Security"
-        // We want to NOT break on arrays + tuples (e.g. [(123, 1232), (4875, 9873), ...])
-        // - Should become "[(123, 1232), (4875, 9873), ...]"
-        // There's probably other cases here
-
         let mut params = Vec::new();
         let mut param = String::new();
         let mut inside_string = false;
         let mut stack = Vec::new();
         let mut iter = args.chars().peekable();
+
         while let Some(c) = iter.next() {
             match c {
                 ',' => {
@@ -117,6 +107,24 @@ impl ParamHandler {
         };
         self.valid_idx(idx)?;
         Ok(&self.params[idx..idx + ADVANCED_PARAM_LEN])
+    }
+
+    pub fn additional_parameters(&self, event_type: EventType) -> Result<&[String], JastorError> {
+        let base_idx = match event_type.prefix_parameters() {
+            0 => BASE_PARAMETERS_IDX,
+            n => BASE_PARAMETERS_IDX + n,
+        };
+
+        let offset = if event_type.has_no_advanced_parameters() {
+            base_idx
+        } else {
+            base_idx + ADVANCED_PARAM_LEN
+        };
+
+        match self.valid_idx(offset) {
+            Ok(_) => Ok(&self.params[offset..]),
+            Err(_) => Ok(&[]),
+        }
     }
 
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {

@@ -67,13 +67,17 @@ impl CombatLogParser {
     fn parse_combat_event(&mut self, event_type: EventType, args: &str) -> Result<(), JastorError> {
         let handler = ParamHandler::new(args);
 
-        println!("{event_type}\nArgs: {args}");
         let base_params = handler.base_params()?;
         let prefix_params = handler.prefix_parameters(event_type)?;
-        let advanced_params = handler.advanced_parameters(event_type)?;
+        let advanced_params = if event_type.has_no_advanced_parameters() {
+            None
+        } else {
+            Some(handler.advanced_parameters(event_type)?)
+        };
+        let additional_params = handler.additional_parameters(event_type)?;
 
         println!(
-            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}"
+            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}\nAdditional Params: {additional_params:?}"
         );
         println!();
         // Advanced parameter fields:
