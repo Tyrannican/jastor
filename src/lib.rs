@@ -74,7 +74,7 @@ impl CombatLogParser {
         let advanced_params = handler.advanced_parameters(event_type)?;
         let suffix_params = handler.additional_parameters(event_type)?;
 
-        println!("{event_type} {base_params:?} {prefix_params:?} {advanced_params:?}");
+        println!("{event_type} {base_params:?} {advanced_params:?}");
         let advanced_event = AdvancedParameters::parse(advanced_params)?;
 
         // match event_type {
