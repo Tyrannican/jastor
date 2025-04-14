@@ -1,3 +1,4 @@
+use num_traits::{Num, NumCast};
 use std::{fmt::Display, str::FromStr};
 
 use crate::{error::JastorError, event::EventType};
@@ -10,7 +11,7 @@ pub trait ParameterHandler {
     fn as_string(&self, idx: usize) -> Result<String, JastorError>;
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
     where
-        T: FromStr,
+        T: FromStr + Num + NumCast,
         T::Err: Display;
 }
 
@@ -146,13 +147,20 @@ impl ParameterHandler for ArgumentHandler {
 
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
     where
-        T: FromStr,
+        T: FromStr + Num + NumCast,
         T::Err: Display,
     {
         self.valid_idx(idx)?;
-        self.params[idx]
-            .parse::<T>()
-            .map_err(|e| JastorError::ParseError(e.to_string()))
+        let value = &self.params[idx];
+        if let Some(stripped) = value.strip_prefix("0x") {
+            T::from_str_radix(stripped, 16).map_err(|_| {
+                JastorError::ParseError(format!("cannot convert value from hex: {value}"))
+            })
+        } else {
+            T::from_str_radix(value, 10).map_err(|_| {
+                JastorError::ParseError(format!("cannot convert string to number: {value}"))
+            })
+        }
     }
 }
 
@@ -167,7 +175,7 @@ impl<'a> SliceHander<'a> {
     }
 }
 
-impl<'a> ParameterHandler for SliceHander<'a> {
+impl ParameterHandler for SliceHander<'_> {
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(
@@ -186,13 +194,20 @@ impl<'a> ParameterHandler for SliceHander<'a> {
 
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
     where
-        T: FromStr,
+        T: FromStr + Num + NumCast,
         T::Err: Display,
     {
         self.valid_idx(idx)?;
-        self.params[idx]
-            .parse::<T>()
-            .map_err(|e| JastorError::ParseError(e.to_string()))
+        let value = &self.params[idx];
+        if let Some(stripped) = value.strip_prefix("0x") {
+            T::from_str_radix(stripped, 16).map_err(|_| {
+                JastorError::ParseError(format!("cannot convert value from hex: {value}"))
+            })
+        } else {
+            T::from_str_radix(value, 10).map_err(|_| {
+                JastorError::ParseError(format!("cannot convert string to number: {value}"))
+            })
+        }
     }
 }
 

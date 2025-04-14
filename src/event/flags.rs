@@ -29,7 +29,7 @@ const UNIT_OBJECT_TARGET: u32 = 0x00010000;
 const UNIT_OBJECT_FOCUS: u32 = 0x00020000;
 const UNIT_OBJECT_MAINTANK: u32 = 0x00040000;
 const UNIT_OBJECT_MAINASSIST: u32 = 0x00080000;
-const UNIT_OBJECT_NONE: u32 = 0x80000000;
+// const UNIT_OBJECT_NONE: u32 = 0x80000000;
 const UNIT_OBJECT_SPECIAL_MASK: u32 = 0xFFFF0000;
 
 // Raid Target Flags
@@ -43,8 +43,8 @@ const RAID_TARGET_CROSS: u32 = 0x00000040;
 const RAID_TARGET_SKULL: u32 = 0x00000080;
 const RAID_TARGET_MASK: u32 = 0x000000FF;
 
-#[derive(Debug)]
-pub struct Unit {
+#[derive(Debug, Clone)]
+pub struct UnitFlag {
     pub affiliation: UnitAffiliation,
     pub reaction: UnitReaction,
     pub controller: UnitController,
@@ -52,7 +52,7 @@ pub struct Unit {
     pub special: UnitSpecial,
 }
 
-impl Unit {
+impl UnitFlag {
     pub fn parse(flag: u32) -> Self {
         let affiliation = match flag & UNIT_AFFILIATION_MASK {
             UNIT_AFFILIATION_MINE => UnitAffiliation::Mine,
@@ -64,8 +64,8 @@ impl Unit {
 
         let reaction = match flag & UNIT_REACTION_MASK {
             UNIT_REACTION_FRIENDLY => UnitReaction::Friendly,
-            UNIT_REACTION_NEUTRAL => UnitReaction::Friendly,
-            UNIT_REACTION_HOSTILE => UnitReaction::Friendly,
+            UNIT_REACTION_NEUTRAL => UnitReaction::Neutral,
+            UNIT_REACTION_HOSTILE => UnitReaction::Hostile,
             _ => unreachable!("WoW ensures the flag is always valid"),
         };
 
@@ -89,8 +89,7 @@ impl Unit {
             UNIT_OBJECT_FOCUS => UnitSpecial::Focus,
             UNIT_OBJECT_MAINTANK => UnitSpecial::MainTank,
             UNIT_OBJECT_MAINASSIST => UnitSpecial::MainAssist,
-            UNIT_OBJECT_NONE => UnitSpecial::None,
-            _ => unreachable!("WoW ensures the flag is always valid"),
+            _ => UnitSpecial::None,
         };
 
         Self {
@@ -103,7 +102,7 @@ impl Unit {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitAffiliation {
     Mine,
     Party,
@@ -111,20 +110,20 @@ pub enum UnitAffiliation {
     Outsider,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitReaction {
     Friendly,
     Neutral,
     Hostile,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitController {
     Player,
     Npc,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitType {
     Player,
     Npc,
@@ -133,7 +132,7 @@ pub enum UnitType {
     Object,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitSpecial {
     Target,
     Focus,
@@ -142,7 +141,7 @@ pub enum UnitSpecial {
     None,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RaidMarker {
     Star,
     Circle,

@@ -631,8 +631,8 @@ pub enum SpellSchool {
     Unknown(u8),
 }
 
-impl SpellSchool {
-    pub fn from_u8(value: u8) -> Self {
+impl From<u8> for SpellSchool {
+    fn from(value: u8) -> Self {
         match value {
             1 => Self::Physical,
             2 => Self::Holy,
@@ -671,44 +671,46 @@ impl SpellSchool {
             _ => Self::Unknown(value),
         }
     }
+}
 
-    pub fn as_u8(&self) -> u8 {
-        match *self {
-            Self::Physical => 1,
-            Self::Holy => 2,
-            Self::Fire => 4,
-            Self::Nature => 8,
-            Self::Frost => 16,
-            Self::Shadow => 32,
-            Self::Arcane => 64,
-            Self::Holystrike => 3,
-            Self::Flamestrike => 5,
-            Self::Radiant => 6,
-            Self::Stormstrike => 9,
-            Self::Holystorm => 10,
-            Self::Volcanic => 12,
-            Self::Froststrike => 17,
-            Self::Holyfrost => 18,
-            Self::Frostfire => 20,
-            Self::Froststorm => 24,
-            Self::Shadowstrike => 33,
-            Self::Twilight => 34,
-            Self::Shadowflame => 36,
-            Self::Plague => 40,
-            Self::Shadowfrost => 48,
-            Self::Spellstrike => 65,
-            Self::Divine => 66,
-            Self::Spellfire => 68,
-            Self::Astral => 72,
-            Self::Spellfrost => 80,
-            Self::Spellshadow => 96,
-            Self::Elemental => 28,
-            Self::Chromatic => 62,
-            Self::Cosmic => 106,
-            Self::LimitedChaos => 124,
-            Self::Magic => 126,
-            Self::Chaos => 127,
-            Self::Unknown(val) => val,
+impl From<SpellSchool> for u8 {
+    fn from(value: SpellSchool) -> Self {
+        match value {
+            SpellSchool::Physical => 1,
+            SpellSchool::Holy => 2,
+            SpellSchool::Fire => 4,
+            SpellSchool::Nature => 8,
+            SpellSchool::Frost => 16,
+            SpellSchool::Shadow => 32,
+            SpellSchool::Arcane => 64,
+            SpellSchool::Holystrike => 3,
+            SpellSchool::Flamestrike => 5,
+            SpellSchool::Radiant => 6,
+            SpellSchool::Stormstrike => 9,
+            SpellSchool::Holystorm => 10,
+            SpellSchool::Volcanic => 12,
+            SpellSchool::Froststrike => 17,
+            SpellSchool::Holyfrost => 18,
+            SpellSchool::Frostfire => 20,
+            SpellSchool::Froststorm => 24,
+            SpellSchool::Shadowstrike => 33,
+            SpellSchool::Twilight => 34,
+            SpellSchool::Shadowflame => 36,
+            SpellSchool::Plague => 40,
+            SpellSchool::Shadowfrost => 48,
+            SpellSchool::Spellstrike => 65,
+            SpellSchool::Divine => 66,
+            SpellSchool::Spellfire => 68,
+            SpellSchool::Astral => 72,
+            SpellSchool::Spellfrost => 80,
+            SpellSchool::Spellshadow => 96,
+            SpellSchool::Elemental => 28,
+            SpellSchool::Chromatic => 62,
+            SpellSchool::Cosmic => 106,
+            SpellSchool::LimitedChaos => 124,
+            SpellSchool::Magic => 126,
+            SpellSchool::Chaos => 127,
+            SpellSchool::Unknown(val) => val,
         }
     }
 }

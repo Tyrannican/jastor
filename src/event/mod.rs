@@ -4,7 +4,10 @@ pub mod raw;
 use flags::*;
 pub use raw::*;
 
-use crate::error::JastorError;
+use crate::{
+    error::JastorError,
+    util::param_handler::{ParameterHandler, SliceHander},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Event {
@@ -78,6 +81,49 @@ pub enum Event {
     WorldMarkerRemoved {
         marker: RaidMarker,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct Unit {
+    guid: String,
+    name: String,
+    flags: UnitFlag,
+    raid_flags: RaidMarker,
+}
+
+impl Unit {
+    pub fn new(params: &[String]) -> Result<Self, JastorError> {
+        let handler = SliceHander::new(params);
+        let guid = handler.as_string(0)?;
+        let name = handler.as_string(1)?;
+        let flags = UnitFlag::parse(handler.as_number::<u32>(2)?);
+        let raid_flags = RaidMarker::parse_flag(handler.as_number::<u32>(3)?);
+
+        Ok(Self {
+            guid,
+            name,
+            flags,
+            raid_flags,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Spell {
+    id: usize,
+    name: String,
+    school: SpellSchool,
+}
+
+impl Spell {
+    pub fn new(input: &[String]) -> Result<Self, JastorError> {
+        let handler = SliceHander::new(input);
+        let id = handler.as_number::<usize>(0)?;
+        let name = handler.as_string(1)?;
+        let school = SpellSchool::from(handler.as_number::<u8>(2)?);
+
+        Ok(Self { id, name, school })
+    }
 }
 
 // Advanced parameter fields:

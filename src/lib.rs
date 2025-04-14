@@ -8,6 +8,7 @@ use flags::*;
 use util::param_handler::{ArgumentHandler, ParameterHandler};
 
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
@@ -17,6 +18,7 @@ use std::{
 #[derive(Default)]
 pub struct CombatLogParser {
     size: usize,
+    units: HashMap<String, Unit>,
     events: Vec<Event>,
 }
 
@@ -72,10 +74,31 @@ impl CombatLogParser {
         let advanced_params = handler.advanced_parameters(event_type)?;
         let suffix_params = handler.additional_parameters(event_type)?;
 
-        println!(
-            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}\nSuffix Params: {suffix_params:?}"
-        );
-        println!();
+        match event_type {
+            EventType::SpellDamage => {
+                println!("{base_params:?}");
+                let source_unit = self
+                    .units
+                    .entry(base_params[0].to_owned())
+                    .or_insert(Unit::new(&base_params[..4])?);
+                println!("Source: {:?}", &source_unit);
+
+                let target_unit = self
+                    .units
+                    .entry(base_params[4].to_owned())
+                    .or_insert(Unit::new(&base_params[4..])?);
+
+                println!("Target: {:?}", &target_unit);
+                println!();
+            }
+            _ => {}
+        }
+
+        //println!(
+        //    "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}\nSuffix Params: {suffix_params:?}"
+        //);
+        //println!();
+
         // Advanced parameter fields:
         // 1. GUID
         // 2. Owner GUID (00000000000000000)

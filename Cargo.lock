@@ -99,6 +99,7 @@ name = "jastor"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "num-traits",
  "serde",
  "serde_json",
  "thiserror",
