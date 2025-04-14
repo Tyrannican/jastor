@@ -83,6 +83,68 @@ pub enum Event {
     },
 }
 
+// Advanced parameter fields:
+// 1. GUID
+// 2. Owner GUID (00000000000000000)
+// 3. Current HP
+// 4. Max HP
+// 5. Attack Power
+// 6. Spell Power
+// 7 ? - Armor apparently but no dice
+// 8. ? - Absorb shield
+// 9. ?
+// 10. ?
+// 11. Power Type
+// 12. Current Power
+// 13. Max Power
+// 14. Power Cost
+// 15. X coord
+// 16. Y Coord
+// 17. Map ID
+// 18. Facing Direction
+// 19. Level (NPC) or iLvl (Player)
+//
+// Only Need GUID -> Max HP and Current Power -> Level
+#[derive(Debug, Clone)]
+pub struct AdvancedParameters {
+    guid: String,
+    owner: String,
+    current_hp: usize,
+    max_hp: usize,
+    current_power: usize,
+    max_power: usize,
+    power_cost: usize,
+    x: f32,
+    y: f32,
+    map_id: usize,
+    direction: f32,
+    level: usize,
+}
+
+impl AdvancedParameters {
+    pub fn parse(params: Option<&[String]>) -> Result<Option<Self>, JastorError> {
+        let Some(params) = params else {
+            return Ok(None);
+        };
+
+        let handler = SliceHander::new(params);
+        Ok(Some(Self {
+            guid: handler.as_string(0)?,
+            owner: handler.as_string(1)?,
+            current_hp: handler.as_number::<usize>(2)?,
+            max_hp: handler.as_number::<usize>(3)?,
+            current_power: handler.as_number::<usize>(11)?,
+            max_power: handler.as_number::<usize>(12)?,
+            power_cost: handler.as_number::<usize>(13)?,
+            x: handler.as_number::<f32>(14)?,
+            y: handler.as_number::<f32>(15)?,
+            map_id: handler.as_number::<usize>(16)?,
+            direction: handler.as_number::<f32>(17)?,
+            level: handler.as_number::<usize>(18)?,
+        }))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Unit {
     guid: String,
@@ -125,26 +187,3 @@ impl Spell {
         Ok(Self { id, name, school })
     }
 }
-
-// Advanced parameter fields:
-// 1. GUID
-// 2. Owner GUID (00000000000000000)
-// 3. Current HP
-// 4. Max HP
-// 5. Attack Power
-// 6. Spell Power
-// 7 ? - Armor apparently but no dice
-// 8. ? - Absorb shield
-// 9. ?
-// 10. ?
-// 11. Power Type
-// 12. Current Power
-// 13. Max Power
-// 14. Power Cost
-// 15. X coord
-// 16. Y Coord
-// 17. Map ID
-// 18. Facing Direction
-// 19. Level (NPC) or iLvl (Player)
-//
-// Only Need GUID -> Max HP and Current Power -> Level

@@ -294,6 +294,7 @@ impl EventType {
         match *self {
             // Self::SwingDamage | Self::SwingDamageLanded | Self::SwingMissed | Self::EnvironmentalDamage => 0,
             Self::SpellDamage
+            | Self::RangeDamage
             | Self::DamageSplit
             | Self::DamageShield // <- This needs checked
             | Self::DamageShieldMissed // <- This needs checked

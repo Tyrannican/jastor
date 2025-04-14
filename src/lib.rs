@@ -74,30 +74,28 @@ impl CombatLogParser {
         let advanced_params = handler.advanced_parameters(event_type)?;
         let suffix_params = handler.additional_parameters(event_type)?;
 
-        match event_type {
-            EventType::SpellDamage => {
-                println!("{base_params:?}");
-                let source_unit = self
-                    .units
-                    .entry(base_params[0].to_owned())
-                    .or_insert(Unit::new(&base_params[..4])?);
-                println!("Source: {:?}", &source_unit);
+        println!("{event_type} {base_params:?} {prefix_params:?} {advanced_params:?}");
+        let advanced_event = AdvancedParameters::parse(advanced_params)?;
 
-                let target_unit = self
-                    .units
-                    .entry(base_params[4].to_owned())
-                    .or_insert(Unit::new(&base_params[4..])?);
+        // match event_type {
+        //     EventType::SpellHeal => {
+        //         let source_unit = self
+        //             .units
+        //             .entry(base_params[0].to_owned())
+        //             .or_insert(Unit::new(&base_params[..4])?);
 
-                println!("Target: {:?}", &target_unit);
-                println!();
-            }
-            _ => {}
-        }
+        //         let target_unit = self
+        //             .units
+        //             .entry(base_params[4].to_owned())
+        //             .or_insert(Unit::new(&base_params[4..])?);
+        //     }
+        //     _ => {}
+        // }
 
-        //println!(
-        //    "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_params:?}\nSuffix Params: {suffix_params:?}"
-        //);
-        //println!();
+        println!(
+            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_event:?}\nSuffix Params: {suffix_params:?}"
+        );
+        println!();
 
         // Advanced parameter fields:
         // 1. GUID
