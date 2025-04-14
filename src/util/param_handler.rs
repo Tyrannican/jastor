@@ -173,6 +173,23 @@ impl<'a> SliceHander<'a> {
     pub fn new(params: &'a [String]) -> Self {
         Self { params }
     }
+
+    pub fn as_multi_value_number<T, U>(&self, idx: usize) -> Result<(T, U), JastorError>
+    where
+        T: FromStr + Num + NumCast,
+        T::Err: Display,
+        U: FromStr + Num + NumCast,
+        U::Err: Display,
+    {
+        self.valid_idx(idx)?;
+        let value = &self.params[idx];
+        if value.contains("|") {
+            todo!()
+        } else {
+            // Handle zero case
+            todo!()
+        }
+    }
 }
 
 impl ParameterHandler for SliceHander<'_> {
