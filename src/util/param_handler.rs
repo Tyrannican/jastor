@@ -1,7 +1,10 @@
 use num_traits::{Num, NumCast};
 use std::{fmt::Display, str::FromStr};
 
-use crate::{error::JastorError, event::EventType};
+use crate::{
+    error::JastorError,
+    event::{EventType, PowerType},
+};
 
 const BASE_PARAMETERS_IDX: usize = 8;
 const ADVANCED_PARAM_LEN: usize = 19;
@@ -174,20 +177,34 @@ impl<'a> SliceHander<'a> {
         Self { params }
     }
 
-    pub fn as_multi_value_number<T, U>(&self, idx: usize) -> Result<(T, U), JastorError>
+    pub fn as_multi_value_number<T>(&self, idx: usize) -> Result<(usize, T), JastorError>
     where
         T: FromStr + Num + NumCast,
         T::Err: Display,
-        U: FromStr + Num + NumCast,
-        U::Err: Display,
     {
         self.valid_idx(idx)?;
         let value = &self.params[idx];
         if value.contains("|") {
-            todo!()
+            let Some((power_type, val)) = value.split_once('|') else {
+                unreachable!("covered by conditional");
+            };
+
+            let power_type = power_type
+                .parse::<usize>()
+                .map_err(|e| JastorError::ParseError(e.to_string()))?;
+
+            let val = T::from_str_radix(val, 10).map_err(|_| {
+                JastorError::ParseError(format!("cannot convert string to number: {value}"))
+            })?;
+
+            Ok((power_type, val))
         } else {
-            // Handle zero case
-            todo!()
+            Ok((
+                0,
+                T::from_str_radix(value, 10).map_err(|_| {
+                    JastorError::ParseError(format!("cannot convert string to number: {value}"))
+                })?,
+            ))
         }
     }
 }

@@ -83,28 +83,6 @@ pub enum Event {
     },
 }
 
-// Advanced parameter fields:
-// 1. GUID
-// 2. Owner GUID (00000000000000000)
-// 3. Current HP
-// 4. Max HP
-// 5. Attack Power
-// 6. Spell Power
-// 7 ? - Armor apparently but no dice
-// 8. ? - Absorb shield
-// 9. ?
-// 10. ?
-// 11. Power Type
-// 12. Current Power
-// 13. Max Power
-// 14. Power Cost
-// 15. X coord
-// 16. Y Coord
-// 17. Map ID
-// 18. Facing Direction
-// 19. Level (NPC) or iLvl (Player)
-//
-// Only Need GUID -> Max HP and Current Power -> Level
 #[derive(Debug, Clone)]
 pub struct AdvancedParameters {
     guid: String,
@@ -122,20 +100,46 @@ pub struct AdvancedParameters {
 }
 
 impl AdvancedParameters {
+    // Advanced parameter fields:
+    // 1. GUID
+    // 2. Owner GUID (00000000000000000)
+    // 3. Current HP
+    // 4. Max HP
+    // 5. Attack Power
+    // 6. Spell Power
+    // 7 ? - Armor apparently but no dice
+    // 8. ? - Absorb shield
+    // 9. ?
+    // 10. ?
+    // 11. Power Type
+    // 12. Current Power
+    // 13. Max Power
+    // 14. Power Cost
+    // 15. X coord
+    // 16. Y Coord
+    // 17. Map ID
+    // 18. Facing Direction
+    // 19. Level (NPC) or iLvl (Player)
+    //
+    // Only Need GUID -> Max HP and Current Power -> Level
     pub fn parse(params: Option<&[String]>) -> Result<Option<Self>, JastorError> {
         let Some(params) = params else {
             return Ok(None);
         };
 
         let handler = SliceHander::new(params);
+        let (_, current_power) = handler.as_multi_value_number::<usize>(11)?;
+        let (_, max_power) = handler.as_multi_value_number::<usize>(11)?;
+        let (_, power_cost) = handler.as_multi_value_number::<usize>(11)?;
+
         Ok(Some(Self {
             guid: handler.as_string(0)?,
             owner: handler.as_string(1)?,
             current_hp: handler.as_number::<usize>(2)?,
             max_hp: handler.as_number::<usize>(3)?,
-            current_power: handler.as_number::<usize>(11)?,
-            max_power: handler.as_number::<usize>(12)?,
-            power_cost: handler.as_number::<usize>(13)?,
+            current_power,
+            max_power,
+            power_cost,
             x: handler.as_number::<f32>(14)?,
             y: handler.as_number::<f32>(15)?,
             map_id: handler.as_number::<usize>(16)?,
