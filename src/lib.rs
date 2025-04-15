@@ -81,7 +81,8 @@ impl CombatLogParser {
             | EventType::RangeDamage
             | EventType::SpellBuildingDamage
             | EventType::SpellPeriodicDamage
-            | EventType::SwingDamage => {
+            | EventType::SwingDamage
+            | EventType::SwingDamageLanded => {
                 self.events.push(Event::Damage(DamageEvent::new(
                     event_type,
                     base_params,
@@ -90,6 +91,10 @@ impl CombatLogParser {
                     suffix_params,
                 )?));
             }
+            // EventType::SpellMissed | EventType::RangeMissed | EventType::SwingMissed => {
+            //     println!("{event_type} {base_params:?} {prefix_params:?} {suffix_params:?}");
+            //     println!();
+            // }
             EventType::SpellCastStart => {
                 let src = Unit::parse(&base_params[..4])?;
                 let target = Unit::parse(&base_params[4..]).ok();

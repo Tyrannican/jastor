@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug)]
 pub enum Event {
     Damage(DamageEvent),
+    Miss,
     SpellCast {
         event_type: EventType,
         src: Unit,
@@ -140,17 +141,16 @@ impl DamageEvent {
         let absorbed = handler.as_number::<isize>(6)?;
         let critical = handler.boolean_flag(7)?;
 
-        let (is_offhand, damage_type) = if event_type == EventType::SwingDamage {
-            (handler.boolean_flag(handler.len() - 1)?, None)
-        } else {
-            let last_item = handler.as_string(handler.len() - 1)?;
-            DamageType::from_str(&last_item)?;
-            (
+        let (is_offhand, damage_type) = match event_type {
+            EventType::SwingDamage | EventType::SwingDamageLanded => {
+                (handler.boolean_flag(handler.len() - 1)?, None)
+            }
+            _ => (
                 false,
                 Some(DamageType::from_str(
                     &handler.as_string(handler.len() - 1)?,
                 )?),
-            )
+            ),
         };
 
         Ok(Self {
