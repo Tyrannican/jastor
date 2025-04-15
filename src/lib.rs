@@ -8,7 +8,6 @@ use flags::*;
 use util::param_handler::{ArgumentHandler, ParameterHandler};
 
 use std::{
-    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
@@ -18,7 +17,6 @@ use std::{
 #[derive(Default)]
 pub struct CombatLogParser {
     size: usize,
-    units: HashMap<String, Unit>,
     events: Vec<Event>,
 }
 
@@ -55,6 +53,8 @@ impl CombatLogParser {
         };
 
         let event = EventType::from_str(event_type)?;
+
+        // TODO: Handle Combatant Info
         if event.skip() {
             return Ok(());
         }
@@ -74,51 +74,43 @@ impl CombatLogParser {
         let advanced_params = handler.advanced_parameters(event_type)?;
         let suffix_params = handler.additional_parameters(event_type)?;
 
-        println!("{event_type} {base_params:?} {advanced_params:?}");
         let advanced_event = AdvancedParameters::parse(advanced_params)?;
 
-        // match event_type {
-        //     EventType::SpellHeal => {
-        //         let source_unit = self
-        //             .units
-        //             .entry(base_params[0].to_owned())
-        //             .or_insert(Unit::new(&base_params[..4])?);
+        match event_type {
+            EventType::SpellDamage
+            | EventType::RangeDamage
+            | EventType::SpellBuildingDamage
+            | EventType::SpellPeriodicDamage
+            | EventType::SwingDamage => {
+                self.events.push(Event::Damage(DamageEvent::new(
+                    event_type,
+                    base_params,
+                    advanced_event,
+                    prefix_params,
+                    suffix_params,
+                )?));
+            }
+            EventType::SpellCastStart => {
+                let src = Unit::parse(&base_params[..4])?;
+                let target = Unit::parse(&base_params[4..]).ok();
+                let spell = Spell::parse(prefix_params)?;
+                let failure_reason = if !suffix_params.is_empty() {
+                    Some(suffix_params[0].to_string())
+                } else {
+                    None
+                };
 
-        //         let target_unit = self
-        //             .units
-        //             .entry(base_params[4].to_owned())
-        //             .or_insert(Unit::new(&base_params[4..])?);
-        //     }
-        //     _ => {}
-        // }
+                self.events.push(Event::SpellCast {
+                    event_type,
+                    src,
+                    target,
+                    spell,
+                    failure_reason,
+                });
+            }
+            _ => {}
+        }
 
-        println!(
-            "{event_type}\nBase: {base_params:?}\nPrefix: {prefix_params:?}\nAdvanced: {advanced_event:?}\nSuffix Params: {suffix_params:?}"
-        );
-        println!();
-
-        // Advanced parameter fields:
-        // 1. GUID
-        // 2. Owner GUID (00000000000000000)
-        // 3. Current HP
-        // 4. Max HP
-        // 5. Attack Power
-        // 6. Spell Power
-        // 7 ? - Armor apparently but no dice
-        // 8. ? - Absorb shield
-        // 9. ?
-        // 10. ?
-        // 11. Power Type
-        // 12. Current Power
-        // 13. Max Power
-        // 14. Power Cost
-        // 15. X coord
-        // 16. Y Coord
-        // 17. Map ID
-        // 18. Facing Direction
-        // 19. Level (NPC) or iLvl (Player)
-        //
-        // Only Need GUID -> Max HP and Current Power -> Level
         Ok(())
     }
 
@@ -184,7 +176,7 @@ impl CombatLogParser {
                 let name = handler.as_string(1)?;
                 let difficulty = Difficulty::from(handler.as_number::<u16>(2)?);
                 let size = handler.as_number::<usize>(3)?;
-                let success = handler.success_flag(4)?;
+                let success = handler.boolean_flag(4)?;
                 let length = handler.as_number::<u64>(5)?;
                 self.events.push(Event::EncounterEnd {
                     id,
@@ -243,7 +235,7 @@ impl CombatLogParser {
             }
             EventType::ChallengeModeEnd => {
                 let id = handler.as_number::<usize>(0)?;
-                let success = handler.success_flag(1)?;
+                let success = handler.boolean_flag(1)?;
                 let keystone_level = handler.as_number::<usize>(2)?;
                 let duration = handler.as_number::<u64>(3)?;
 

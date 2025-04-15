@@ -292,7 +292,6 @@ impl EventType {
 
     pub fn prefix_parameters(&self) -> usize {
         match *self {
-            // Self::SwingDamage | Self::SwingDamageLanded | Self::SwingMissed | Self::EnvironmentalDamage => 0,
             Self::SpellDamage
             | Self::RangeDamage
             | Self::DamageSplit
@@ -863,6 +862,33 @@ impl std::fmt::Display for AuraType {
         match *self {
             Self::Buff => write!(f, "BUFF"),
             Self::Debuff => write!(f, "DEBUFF"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DamageType {
+    SingleTarget,
+    Aoe,
+}
+
+impl FromStr for DamageType {
+    type Err = JastorError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ST" => Ok(Self::SingleTarget),
+            "AOE" => Ok(Self::Aoe),
+            _ => Err(JastorError::UnknownValue(format!("DamageType: {s}"))),
+        }
+    }
+}
+
+impl std::fmt::Display for DamageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::SingleTarget => write!(f, "Single Target"),
+            Self::Aoe => write!(f, "AoE"),
         }
     }
 }

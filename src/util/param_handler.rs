@@ -1,17 +1,16 @@
 use num_traits::{Num, NumCast};
 use std::{fmt::Display, str::FromStr};
 
-use crate::{
-    error::JastorError,
-    event::{EventType, PowerType},
-};
+use crate::{error::JastorError, event::EventType};
 
 const BASE_PARAMETERS_IDX: usize = 8;
 const ADVANCED_PARAM_LEN: usize = 19;
 
 pub trait ParameterHandler {
+    fn len(&self) -> usize;
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError>;
     fn as_string(&self, idx: usize) -> Result<String, JastorError>;
+    fn boolean_flag(&self, idx: usize) -> Result<bool, JastorError>;
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
     where
         T: FromStr + Num + NumCast,
@@ -71,18 +70,6 @@ impl ArgumentHandler {
         Self { params }
     }
 
-    pub fn success_flag(&self, idx: usize) -> Result<bool, JastorError> {
-        self.valid_idx(idx)?;
-        let flag = self.params[idx]
-            .parse::<u8>()
-            .map_err(|e| JastorError::ParseError(e.to_string()))?;
-
-        match flag {
-            1 => Ok(true),
-            _ => Ok(false),
-        }
-    }
-
     pub fn base_params(&self) -> Result<&[String], JastorError> {
         self.valid_idx(BASE_PARAMETERS_IDX)?;
         Ok(&self.params[..BASE_PARAMETERS_IDX])
@@ -132,6 +119,10 @@ impl ArgumentHandler {
 }
 
 impl ParameterHandler for ArgumentHandler {
+    fn len(&self) -> usize {
+        self.params.len()
+    }
+
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(
@@ -155,6 +146,10 @@ impl ParameterHandler for ArgumentHandler {
     {
         self.valid_idx(idx)?;
         let value = &self.params[idx];
+        if value == "nil" {
+            return Ok(T::zero());
+        }
+
         if let Some(stripped) = value.strip_prefix("0x") {
             T::from_str_radix(stripped, 16).map_err(|_| {
                 JastorError::ParseError(format!("cannot convert value from hex: {value}"))
@@ -163,6 +158,22 @@ impl ParameterHandler for ArgumentHandler {
             T::from_str_radix(value, 10).map_err(|_| {
                 JastorError::ParseError(format!("cannot convert string to number: {value}"))
             })
+        }
+    }
+
+    fn boolean_flag(&self, idx: usize) -> Result<bool, JastorError> {
+        self.valid_idx(idx)?;
+        if self.params[idx] == "nil" {
+            return Ok(false);
+        }
+
+        let flag = self.params[idx]
+            .parse::<i8>()
+            .map_err(|e| JastorError::ParseError(e.to_string()))?;
+
+        match flag {
+            1 => Ok(true),
+            _ => Ok(false),
         }
     }
 }
@@ -210,6 +221,10 @@ impl<'a> SliceHander<'a> {
 }
 
 impl ParameterHandler for SliceHander<'_> {
+    fn len(&self) -> usize {
+        self.params.len()
+    }
+
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(
@@ -241,6 +256,22 @@ impl ParameterHandler for SliceHander<'_> {
             T::from_str_radix(value, 10).map_err(|_| {
                 JastorError::ParseError(format!("cannot convert string to number: {value}"))
             })
+        }
+    }
+
+    fn boolean_flag(&self, idx: usize) -> Result<bool, JastorError> {
+        self.valid_idx(idx)?;
+        if self.params[idx] == "nil" {
+            return Ok(false);
+        }
+
+        let flag = self.params[idx]
+            .parse::<i8>()
+            .map_err(|e| JastorError::ParseError(e.to_string()))?;
+
+        match flag {
+            1 => Ok(true),
+            _ => Ok(false),
         }
     }
 }

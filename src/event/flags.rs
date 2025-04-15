@@ -1,3 +1,5 @@
+use crate::error::JastorError;
+
 // Unit Affiliation Flags
 const UNIT_AFFILIATION_MINE: u32 = 0x00000001;
 const UNIT_AFFILIATION_PARTY: u32 = 0x00000002;
@@ -53,26 +55,38 @@ pub struct UnitFlag {
 }
 
 impl UnitFlag {
-    pub fn parse(flag: u32) -> Self {
+    pub fn parse(flag: u32) -> Result<Self, JastorError> {
         let affiliation = match flag & UNIT_AFFILIATION_MASK {
             UNIT_AFFILIATION_MINE => UnitAffiliation::Mine,
             UNIT_AFFILIATION_PARTY => UnitAffiliation::Party,
             UNIT_AFFILIATION_RAID => UnitAffiliation::Raid,
             UNIT_AFFILIATION_OUTSIDER => UnitAffiliation::Outsider,
-            _ => unreachable!("WoW ensures the flag is always valid"),
+            _ => {
+                return Err(JastorError::ParseError(format!(
+                    "invalid flag value for affiliation: {flag}"
+                )));
+            }
         };
 
         let reaction = match flag & UNIT_REACTION_MASK {
             UNIT_REACTION_FRIENDLY => UnitReaction::Friendly,
             UNIT_REACTION_NEUTRAL => UnitReaction::Neutral,
             UNIT_REACTION_HOSTILE => UnitReaction::Hostile,
-            _ => unreachable!("WoW ensures the flag is always valid"),
+            _ => {
+                return Err(JastorError::ParseError(format!(
+                    "invalid flag value for reaction: {flag}"
+                )));
+            }
         };
 
         let controller = match flag & UNIT_CONTROL_MASK {
             UNIT_CONTROL_PLAYER => UnitController::Player,
             UNIT_CONTROL_NPC => UnitController::Npc,
-            _ => unreachable!("WoW ensures the flag is always valid"),
+            _ => {
+                return Err(JastorError::ParseError(format!(
+                    "invalid flag value for controller: {flag}"
+                )));
+            }
         };
 
         let unit_type = match flag & UNIT_TYPE_MASK {
@@ -81,7 +95,11 @@ impl UnitFlag {
             UNIT_TYPE_PET => UnitType::Pet,
             UNIT_TYPE_GUARDIAN => UnitType::Guardian,
             UNIT_TYPE_OBJECT => UnitType::Object,
-            _ => unreachable!("WoW ensures the flag is always valid"),
+            _ => {
+                return Err(JastorError::ParseError(format!(
+                    "invalid flag value for unit_type: {flag}"
+                )));
+            }
         };
 
         let special = match flag & UNIT_OBJECT_SPECIAL_MASK {
@@ -92,13 +110,13 @@ impl UnitFlag {
             _ => UnitSpecial::None,
         };
 
-        Self {
+        Ok(Self {
             affiliation,
             reaction,
             controller,
             unit_type,
             special,
-        }
+        })
     }
 }
 
