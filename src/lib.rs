@@ -91,11 +91,23 @@ impl CombatLogParser {
                     suffix_params,
                 )?));
             }
-            // EventType::SpellMissed | EventType::RangeMissed | EventType::SwingMissed => {
-            //     println!("{event_type} {base_params:?} {prefix_params:?} {suffix_params:?}");
-            //     println!();
-            // }
-            EventType::SpellCastStart => {
+            EventType::SpellMissed | EventType::RangeMissed | EventType::SwingMissed => {
+                let src = Unit::parse(&base_params[..4])?;
+                let target = Unit::parse(&base_params[4..])?;
+                let spell = if !prefix_params.is_empty() {
+                    Some(Spell::parse(&prefix_params)?)
+                } else {
+                    None
+                };
+                // println!(
+                //     "Src: {src:?}\nTarget: {target:?}\nSpell: {spell:?}\nSuffix: {suffix_params:?}"
+                // );
+                println!("{event_type}: {suffix_params:?}");
+                println!();
+            }
+            EventType::SpellCastStart
+            | EventType::SpellCastSuccess
+            | EventType::SpellCastFailed => {
                 let src = Unit::parse(&base_params[..4])?;
                 let target = Unit::parse(&base_params[4..]).ok();
                 let spell = Spell::parse(prefix_params)?;

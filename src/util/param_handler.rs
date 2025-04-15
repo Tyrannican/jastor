@@ -136,7 +136,10 @@ impl ParameterHandler for ArgumentHandler {
     }
     fn as_string(&self, idx: usize) -> Result<String, JastorError> {
         self.valid_idx(idx)?;
-        Ok(self.params[idx].to_string().replace("\"", ""))
+        Ok(self.params[idx]
+            .to_string()
+            .replace("nil", "")
+            .replace("\"", ""))
     }
 
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
@@ -238,7 +241,10 @@ impl ParameterHandler for SliceHander<'_> {
     }
     fn as_string(&self, idx: usize) -> Result<String, JastorError> {
         self.valid_idx(idx)?;
-        Ok(self.params[idx].to_string().replace("\"", ""))
+        Ok(self.params[idx]
+            .to_string()
+            .replace("nil", "")
+            .replace("\"", ""))
     }
 
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
