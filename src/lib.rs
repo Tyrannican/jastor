@@ -78,9 +78,7 @@ impl CombatLogParser {
 
         match event_type {
             EventType::SwingDamage | EventType::SwingDamageLanded => {
-                println!(
-                    "{event_type}\namount,base_amount,overkill,school,resisted,blocked,absorbed,critical,glancing,crushing,isoffhand,damagetype\n{suffix_params:?}"
-                );
+                println!("{event_type}\n{suffix_params:?}");
                 println!();
             }
             _ => {}
