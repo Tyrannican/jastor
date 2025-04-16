@@ -77,11 +77,10 @@ impl CombatLogParser {
         let advanced_event = AdvancedParameters::parse(advanced_params)?;
 
         match event_type {
-            EventType::SpellDamage
-            | EventType::RangeDamage
-            | EventType::SwingDamage
-            | EventType::SwingDamageLanded => {
-                println!("{event_type}\n{suffix_params:?}");
+            EventType::SwingDamage | EventType::SwingDamageLanded => {
+                println!(
+                    "{event_type}\namount,base_amount,overkill,school,resisted,blocked,absorbed,critical,glancing,crushing,isoffhand,damagetype\n{suffix_params:?}"
+                );
                 println!();
             }
             _ => {}

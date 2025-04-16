@@ -10,6 +10,10 @@ use crate::{
     util::param_handler::{ParameterHandler, SliceHander},
 };
 
+// Damage Event Parameters
+// amount, base_amount, overkill, school, resisted, blocked, absorbed, critical, glancing,
+// is_offhand
+
 #[derive(Debug, Clone)]
 pub struct EventParser {
     event_type: EventType,
