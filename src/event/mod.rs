@@ -1,28 +1,50 @@
 pub mod flags;
 pub mod raw;
 
-use std::str::FromStr;
-
 use flags::*;
 pub use raw::*;
 
 use crate::{
+    ArgumentHandler,
     error::JastorError,
     util::param_handler::{ParameterHandler, SliceHander},
 };
 
+#[derive(Debug, Clone)]
+pub struct EventParser {
+    event_type: EventType,
+    handler: ArgumentHandler,
+}
+
+impl EventParser {
+    pub fn new(event_type: EventType, args: &str) -> Self {
+        Self {
+            event_type,
+            handler: ArgumentHandler::new(args),
+        }
+    }
+
+    pub fn base(&self) -> Result<(Option<Unit>, Option<Unit>), JastorError> {
+        let base = self.handler.base_params()?;
+        Ok((Unit::parse(&base[..4]).ok(), Unit::parse(&base[4..]).ok()))
+    }
+
+    pub fn prefix(&self) -> Result<Option<Spell>, JastorError> {
+        let prefix = self.handler.prefix_parameters(self.event_type)?;
+        if prefix.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(Spell::parse(prefix)?))
+    }
+
+    pub fn advanced(&self) -> Result<Option<AdvancedParameters>, JastorError> {
+        AdvancedParameters::parse(self.handler.advanced_parameters(self.event_type)?)
+    }
+}
+
 #[derive(Debug)]
 pub enum Event {
-    Damage(DamageEvent),
-    Miss,
-    SpellCast {
-        event_type: EventType,
-        src: Unit,
-        target: Option<Unit>,
-        spell: Spell,
-        failure_reason: Option<String>,
-    },
-
     // Special Events
     CombatLogVersion {
         version: u8,
@@ -94,83 +116,6 @@ pub enum Event {
     WorldMarkerRemoved {
         marker: RaidMarker,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct DamageEvent {
-    event_type: EventType,
-    src: Unit,
-    target: Unit,
-    spell: Option<Spell>,
-    advanced_parameters: Option<AdvancedParameters>,
-    amount: isize,
-    base_amount: isize,
-    overkill: isize,
-    school: SpellSchool,
-    resisted: isize,
-    blocked: isize,
-    absorbed: isize,
-    critical: bool,
-    is_offhand: bool,
-    damage_type: Option<DamageType>,
-}
-
-impl DamageEvent {
-    pub fn new(
-        event_type: EventType,
-        base: &[String],
-        advanced_parameters: Option<AdvancedParameters>,
-        prefix: &[String],
-        suffix: &[String],
-    ) -> Result<Self, JastorError> {
-        let src = Unit::parse(&base[..4])?;
-        let target = Unit::parse(&base[4..])?;
-        let spell = if !prefix.is_empty() {
-            Some(Spell::parse(prefix)?)
-        } else {
-            None
-        };
-
-        let handler = SliceHander::new(suffix);
-        let amount = handler.as_number::<isize>(0)?;
-        let base_amount = handler.as_number::<isize>(1)?;
-        let overkill = handler.as_number::<isize>(2)?;
-        let school = SpellSchool::from(handler.as_number::<u8>(3)?);
-        let resisted = handler.as_number::<isize>(4)?;
-        let blocked = handler.as_number::<isize>(5)?;
-        let absorbed = handler.as_number::<isize>(6)?;
-        let critical = handler.boolean_flag(7)?;
-
-        let (is_offhand, damage_type) = match event_type {
-            EventType::SwingDamage | EventType::SwingDamageLanded => {
-                (handler.boolean_flag(handler.len() - 1)?, None)
-            }
-            _ => (
-                false,
-                Some(DamageType::from_str(
-                    &handler.as_string(handler.len() - 1)?,
-                )?),
-            ),
-        };
-
-        Ok(Self {
-            event_type,
-            src,
-            target,
-            spell,
-            advanced_parameters,
-            amount,
-            base_amount,
-            overkill,
-            school,
-            resisted,
-            blocked,
-            absorbed,
-            critical,
-            is_offhand,
-            damage_type,
-        })
-    }
 }
 
 #[derive(Debug, Clone)]

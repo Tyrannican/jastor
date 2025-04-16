@@ -79,51 +79,10 @@ impl CombatLogParser {
         match event_type {
             EventType::SpellDamage
             | EventType::RangeDamage
-            | EventType::SpellBuildingDamage
-            | EventType::SpellPeriodicDamage
             | EventType::SwingDamage
             | EventType::SwingDamageLanded => {
-                self.events.push(Event::Damage(DamageEvent::new(
-                    event_type,
-                    base_params,
-                    advanced_event,
-                    prefix_params,
-                    suffix_params,
-                )?));
-            }
-            EventType::SpellMissed | EventType::RangeMissed | EventType::SwingMissed => {
-                let src = Unit::parse(&base_params[..4])?;
-                let target = Unit::parse(&base_params[4..])?;
-                let spell = if !prefix_params.is_empty() {
-                    Some(Spell::parse(&prefix_params)?)
-                } else {
-                    None
-                };
-                // println!(
-                //     "Src: {src:?}\nTarget: {target:?}\nSpell: {spell:?}\nSuffix: {suffix_params:?}"
-                // );
-                println!("{event_type}: {suffix_params:?}");
+                println!("{event_type}\n{suffix_params:?}");
                 println!();
-            }
-            EventType::SpellCastStart
-            | EventType::SpellCastSuccess
-            | EventType::SpellCastFailed => {
-                let src = Unit::parse(&base_params[..4])?;
-                let target = Unit::parse(&base_params[4..]).ok();
-                let spell = Spell::parse(prefix_params)?;
-                let failure_reason = if !suffix_params.is_empty() {
-                    Some(suffix_params[0].to_string())
-                } else {
-                    None
-                };
-
-                self.events.push(Event::SpellCast {
-                    event_type,
-                    src,
-                    target,
-                    spell,
-                    failure_reason,
-                });
             }
             _ => {}
         }

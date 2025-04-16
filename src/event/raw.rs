@@ -89,33 +89,6 @@ pub enum EventType {
     SpellBuildingHeal,
     SpellBuildingHealAbsorbed,
     SpellBuildingAbsorbed,
-    SpellBuildingEnergize,
-    SpellBuildingDrain,
-    SpellBuildingLeech,
-    SpellBuildingInterrupt,
-    SpellBuildingDispel,
-    SpellBuildingDispelFailed,
-    SpellBuildingStolen,
-    SpellBuildingExtraAttacks,
-    SpellBuildingAuraApplied,
-    SpellBuildingAuraRemoved,
-    SpellBuildingAuraAppliedDose,
-    SpellBuildingAuraRemovedDose,
-    SpellBuildingAuraRefresh,
-    SpellBuildingAuraBroken,
-    SpellBuildingAuraBrokenSpell,
-    SpellBuildingCastStart,
-    SpellBuildingCastSuccess,
-    SpellBuildingCastFailed,
-    SpellBuildingInstaKill,
-    SpellBuildingDurabilityDamage,
-    SpellBuildingDurabilityDamageAll,
-    SpellBuildingCreate,
-    SpellBuildingSummon,
-    SpellBuildingResurrect,
-    SpellBuildingEmpowerStart,
-    SpellBuildingEmpowerEnd,
-    SpellBuildingEmpowerInterrupt,
 
     // Environmental
     EnvironmentalDamage,
@@ -230,33 +203,6 @@ impl FromStr for EventType {
             "SPELL_BUILDING_HEAL" => Ok(Self::SpellBuildingHeal),
             "SPELL_BUILDING_HEAL_ABSORBED" => Ok(Self::SpellBuildingHealAbsorbed),
             "SPELL_BUILDING_ABSORBED" => Ok(Self::SpellBuildingAbsorbed),
-            "SPELL_BUILDING_ENERGIZE" => Ok(Self::SpellBuildingEnergize),
-            "SPELL_BUILDING_DRAIN" => Ok(Self::SpellBuildingDrain),
-            "SPELL_BUILDING_LEECH" => Ok(Self::SpellBuildingLeech),
-            "SPELL_BUILDING_INTERRUPT" => Ok(Self::SpellBuildingInterrupt),
-            "SPELL_BUILDING_DISPEL" => Ok(Self::SpellBuildingDispel),
-            "SPELL_BUILDING_DISPEL_FAILED" => Ok(Self::SpellBuildingDispelFailed),
-            "SPELL_BUILDING_STOLEN" => Ok(Self::SpellBuildingStolen),
-            "SPELL_BUILDING_EXTRA_ATTACKS" => Ok(Self::SpellBuildingExtraAttacks),
-            "SPELL_BUILDING_AURA_APPLIED" => Ok(Self::SpellBuildingAuraApplied),
-            "SPELL_BUILDING_AURA_REMOVED" => Ok(Self::SpellBuildingAuraRemoved),
-            "SPELL_BUILDING_AURA_APPLIED_DOSE" => Ok(Self::SpellBuildingAuraAppliedDose),
-            "SPELL_BUILDING_AURA_REMOVED_DOSE" => Ok(Self::SpellBuildingAuraRemovedDose),
-            "SPELL_BUILDING_AURA_REFRESH" => Ok(Self::SpellBuildingAuraRefresh),
-            "SPELL_BUILDING_AURA_BROKEN" => Ok(Self::SpellBuildingAuraBroken),
-            "SPELL_BUILDING_AURA_BROKEN_SPELL" => Ok(Self::SpellBuildingAuraBrokenSpell),
-            "SPELL_BUILDING_CAST_START" => Ok(Self::SpellBuildingCastStart),
-            "SPELL_BUILDING_CAST_SUCCESS" => Ok(Self::SpellBuildingCastSuccess),
-            "SPELL_BUILDING_CAST_FAILED" => Ok(Self::SpellBuildingCastFailed),
-            "SPELL_BUILDING_INSTA_KILL" => Ok(Self::SpellBuildingInstaKill),
-            "SPELL_BUILDING_DURABILITY_DAMAGE" => Ok(Self::SpellBuildingDurabilityDamage),
-            "SPELL_BUILDING_DURABILITY_DAMAGE_ALL" => Ok(Self::SpellBuildingDurabilityDamageAll),
-            "SPELL_BUILDING_CREATE" => Ok(Self::SpellBuildingCreate),
-            "SPELL_BUILDING_SUMMON" => Ok(Self::SpellBuildingSummon),
-            "SPELL_BUILDING_RESURRECT" => Ok(Self::SpellBuildingResurrect),
-            "SPELL_BUILDING_EMPOWER_START" => Ok(Self::SpellBuildingEmpowerStart),
-            "SPELL_BUILDING_EMPOWER_END" => Ok(Self::SpellBuildingEmpowerEnd),
-            "SPELL_BUILDING_EMPOWER_INTERRUPT" => Ok(Self::SpellBuildingEmpowerInterrupt),
             "ENVIRONMENTAL_DAMAGE" => Ok(Self::EnvironmentalDamage),
             "DAMAGE_SPLIT" => Ok(Self::DamageSplit),
             "DAMAGE_SHIELD" => Ok(Self::DamageShield),
@@ -293,6 +239,7 @@ impl EventType {
     pub fn prefix_parameters(&self) -> usize {
         match *self {
             Self::SpellDamage
+            | Self::RangeMissed
             | Self::RangeDamage
             | Self::DamageSplit
             | Self::DamageShield // <- This needs checked
@@ -367,34 +314,7 @@ impl EventType {
             | Self::SpellBuildingMissed
             | Self::SpellBuildingHeal
             | Self::SpellBuildingHealAbsorbed
-            | Self::SpellBuildingAbsorbed
-            | Self::SpellBuildingEnergize
-            | Self::SpellBuildingDrain
-            | Self::SpellBuildingLeech
-            | Self::SpellBuildingInterrupt
-            | Self::SpellBuildingDispel
-            | Self::SpellBuildingDispelFailed
-            | Self::SpellBuildingStolen
-            | Self::SpellBuildingExtraAttacks
-            | Self::SpellBuildingAuraApplied
-            | Self::SpellBuildingAuraRemoved
-            | Self::SpellBuildingAuraAppliedDose
-            | Self::SpellBuildingAuraRemovedDose
-            | Self::SpellBuildingAuraRefresh
-            | Self::SpellBuildingAuraBroken
-            | Self::SpellBuildingAuraBrokenSpell
-            | Self::SpellBuildingCastStart
-            | Self::SpellBuildingCastSuccess
-            | Self::SpellBuildingCastFailed
-            | Self::SpellBuildingInstaKill
-            | Self::SpellBuildingDurabilityDamage
-            | Self::SpellBuildingDurabilityDamageAll
-            | Self::SpellBuildingCreate
-            | Self::SpellBuildingSummon
-            | Self::SpellBuildingResurrect
-            | Self::SpellBuildingEmpowerStart
-            | Self::SpellBuildingEmpowerEnd
-            | Self::SpellBuildingEmpowerInterrupt => 3,
+            | Self::SpellBuildingAbsorbed => 3,
             _ => 0,
         }
     }
@@ -536,35 +456,6 @@ impl std::fmt::Display for EventType {
             Self::SpellBuildingHeal => write!(f, "SPELL_BUILDING_HEAL"),
             Self::SpellBuildingHealAbsorbed => write!(f, "SPELL_BUILDING_HEAL_ABSORBED"),
             Self::SpellBuildingAbsorbed => write!(f, "SPELL_BUILDING_ABSORBED"),
-            Self::SpellBuildingEnergize => write!(f, "SPELL_BUILDING_ENERGIZE"),
-            Self::SpellBuildingDrain => write!(f, "SPELL_BUILDING_DRAIN"),
-            Self::SpellBuildingLeech => write!(f, "SPELL_BUILDING_LEECH"),
-            Self::SpellBuildingInterrupt => write!(f, "SPELL_BUILDING_INTERRUPT"),
-            Self::SpellBuildingDispel => write!(f, "SPELL_BUILDING_DISPEL"),
-            Self::SpellBuildingDispelFailed => write!(f, "SPELL_BUILDING_DISPEL_FAILED"),
-            Self::SpellBuildingStolen => write!(f, "SPELL_BUILDING_STOLEN"),
-            Self::SpellBuildingExtraAttacks => write!(f, "SPELL_BUILDING_EXTRA_ATTACKS"),
-            Self::SpellBuildingAuraApplied => write!(f, "SPELL_BUILDING_AURA_APPLIED"),
-            Self::SpellBuildingAuraRemoved => write!(f, "SPELL_BUILDING_AURA_REMOVED"),
-            Self::SpellBuildingAuraAppliedDose => write!(f, "SPELL_BUILDING_AURA_APPLIED_DOSE"),
-            Self::SpellBuildingAuraRemovedDose => write!(f, "SPELL_BUILDING_AURA_REMOVED_DOSE"),
-            Self::SpellBuildingAuraRefresh => write!(f, "SPELL_BUILDING_AURA_REFRESH"),
-            Self::SpellBuildingAuraBroken => write!(f, "SPELL_BUILDING_AURA_BROKEN"),
-            Self::SpellBuildingAuraBrokenSpell => write!(f, "SPELL_BUILDING_AURA_BROKEN_SPELL"),
-            Self::SpellBuildingCastStart => write!(f, "SPELL_BUILDING_CAST_START"),
-            Self::SpellBuildingCastSuccess => write!(f, "SPELL_BUILDING_CAST_SUCCESS"),
-            Self::SpellBuildingCastFailed => write!(f, "SPELL_BUILDING_CAST_FAILED"),
-            Self::SpellBuildingInstaKill => write!(f, "SPELL_BUILDING_INSTA_KILL"),
-            Self::SpellBuildingDurabilityDamage => write!(f, "SPELL_BUILDING_DURABILITY_DAMAGE"),
-            Self::SpellBuildingDurabilityDamageAll => {
-                write!(f, "SPELL_BUILDING_DURABILITY_DAMAGE_ALL")
-            }
-            Self::SpellBuildingCreate => write!(f, "SPELL_BUILDING_CREATE"),
-            Self::SpellBuildingSummon => write!(f, "SPELL_BUILDING_SUMMON"),
-            Self::SpellBuildingResurrect => write!(f, "SPELL_BUILDING_RESURRECT"),
-            Self::SpellBuildingEmpowerStart => write!(f, "SPELL_BUILDING_EMPOWER_START"),
-            Self::SpellBuildingEmpowerEnd => write!(f, "SPELL_BUILDING_EMPOWER_END"),
-            Self::SpellBuildingEmpowerInterrupt => write!(f, "SPELL_BUILDING_EMPOWER_INTERRUPT"),
             Self::EnvironmentalDamage => write!(f, "ENVIRONMENTAL_DAMAGE"),
             Self::DamageSplit => write!(f, "DAMAGE_SPLIT"),
             Self::DamageShield => write!(f, "DAMAGE_SHIELD"),
