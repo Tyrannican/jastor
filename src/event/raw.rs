@@ -233,7 +233,7 @@ impl FromStr for EventType {
 
 impl EventType {
     pub fn skip(&self) -> bool {
-        matches!(*self, Self::Emote)
+        matches!(*self, Self::Emote | Self::CombatantInfo)
     }
 
     pub fn prefix_parameters(&self) -> usize {

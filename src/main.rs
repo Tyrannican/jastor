@@ -6,5 +6,10 @@ fn main() -> Result<(), JastorError> {
     p.parse(infile)?;
     println!("Parsed {} events from \"{infile}\"", p.total_events());
 
+    let infile = "2combat.log";
+    let mut p = CombatLogParser::default();
+    p.parse(infile)?;
+    println!("Parsed {} events from \"{infile}\"", p.total_events());
+
     Ok(())
 }

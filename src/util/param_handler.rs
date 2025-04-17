@@ -8,9 +8,10 @@ const ADVANCED_PARAM_LEN: usize = 19;
 
 pub trait ParameterHandler {
     fn len(&self) -> usize;
+    fn raw(&self, idx: usize) -> Result<&String, JastorError>;
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError>;
     fn as_string(&self, idx: usize) -> Result<String, JastorError>;
-    fn boolean_flag(&self, idx: usize) -> Result<bool, JastorError>;
+    fn as_boolean(&self, idx: usize) -> Result<bool, JastorError>;
     fn as_number<T>(&self, idx: usize) -> Result<T, JastorError>
     where
         T: FromStr + Num + NumCast,
@@ -126,6 +127,11 @@ impl ParameterHandler for ArgumentHandler {
         self.params.len()
     }
 
+    fn raw(&self, idx: usize) -> Result<&String, JastorError> {
+        self.valid_idx(idx)?;
+        Ok(&self.params[idx])
+    }
+
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(
@@ -167,7 +173,7 @@ impl ParameterHandler for ArgumentHandler {
         }
     }
 
-    fn boolean_flag(&self, idx: usize) -> Result<bool, JastorError> {
+    fn as_boolean(&self, idx: usize) -> Result<bool, JastorError> {
         self.valid_idx(idx)?;
         if self.params[idx] == "nil" {
             return Ok(false);
@@ -231,6 +237,11 @@ impl ParameterHandler for SliceHander<'_> {
         self.params.len()
     }
 
+    fn raw(&self, idx: usize) -> Result<&String, JastorError> {
+        self.valid_idx(idx)?;
+        Ok(&self.params[idx])
+    }
+
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(
@@ -268,7 +279,7 @@ impl ParameterHandler for SliceHander<'_> {
         }
     }
 
-    fn boolean_flag(&self, idx: usize) -> Result<bool, JastorError> {
+    fn as_boolean(&self, idx: usize) -> Result<bool, JastorError> {
         self.valid_idx(idx)?;
         if self.params[idx] == "nil" {
             return Ok(false);

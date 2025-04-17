@@ -35,9 +35,28 @@ There are 8 fields in the base parameters:
 
 ### Prefix Parameters
 
-Some events (`SPELL_`) have 3 parameters (`Prefix Parameters`) which are the Spell information
+Some events (`SPELL_` & `RANGE_`) have 3 parameters (`Prefix Parameters`) which are the Spell information
 
 * `spell_id`: The ID of the Spell (internal WoW ID)
 * `spell_name`: String containing the name of the spell (e.g. `Arcane Intellect`)
 * `spell_school`: The "school" of the spell (e.g. Arcane, Frostfire, etc.)
     * This is in the form of a flag that has to be parsed
+
+### Damage Event
+
+Damage events have the following parameters:
+
+* `amount`: Amount of damage dealt
+* `base_amount`: Amount of damage dealt before modifiers (crits etc.)
+* `overkill`: Amount of overkill damage (-1 if no overkill)
+* `school`: School of damage (Physical, Arcane, etc.)
+* `resisted`: How much was resisted
+* `blocked`: How much was blocked
+* `absorbed`: How much was absorbed
+* `critical`: Boolean if the damage was a crit
+* `glancing`: Boolean if the damage was a glancing blow
+* `is_offhand`: Boolean if the damage was caused by an offhand
+* `damage_type`: Spells / Range damage have this parameter
+    * `ST`: For single target Damage
+    * `AOE`: For AoE damage
+    * `SWING_DAMAGE` and `SWING_DAMAGE_LANDED` **DO NOT** have this parameter

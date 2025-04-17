@@ -3,7 +3,7 @@ pub mod event;
 pub(crate) mod util;
 
 use error::JastorError;
-use event::*;
+use event::{Event, parser::EventParser};
 
 use std::{
     fs::File,
