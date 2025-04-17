@@ -85,6 +85,8 @@ impl EventParser {
 
         match self.event_type {
             EventType::SpellDamage
+            | EventType::SpellDamageSupport
+            | EventType::SpellPeriodicDamageSupport
             | EventType::SpellPeriodicDamage
             | EventType::SpellBuildingDamage
             | EventType::RangeDamage
@@ -112,6 +114,14 @@ impl EventParser {
                     _ => None,
                 };
 
+                // This is mutually exclusive with Damage Type so we can use the same IDX
+                let support_guid = match self.event_type {
+                    EventType::SpellDamageSupport | EventType::SpellPeriodicDamageSupport => {
+                        Some(handler.as_string(10)?)
+                    }
+                    _ => None,
+                };
+
                 return Ok(Event::Damage {
                     source,
                     target,
@@ -128,6 +138,7 @@ impl EventParser {
                     glancing,
                     is_offhand,
                     damage_type,
+                    support_guid,
                 });
             }
             EventType::SpellMissed
@@ -161,6 +172,41 @@ impl EventParser {
                     amount,
                     total_amount,
                     critical,
+                });
+            }
+            EventType::SpellHeal
+            | EventType::SpellPeriodicHeal
+            | EventType::SpellBuildingHeal
+            | EventType::SpellHealSupport
+            | EventType::SpellPeriodicHealSupport => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHander::new(self.suffix()?);
+
+                let amount = handler.as_number::<isize>(0)?;
+                let base_amount = handler.as_number::<isize>(1)?;
+                let overhealing = handler.as_number::<isize>(2)?;
+                let absorbed = handler.as_number::<isize>(3)?;
+                let critical = handler.as_boolean(4)?;
+
+                let support_guid = if self.event_type == EventType::SpellPeriodicHealSupport
+                    || self.event_type == EventType::SpellHealSupport
+                {
+                    Some(handler.as_string(5)?)
+                } else {
+                    None
+                };
+
+                return Ok(Event::Heal {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    amount,
+                    base_amount,
+                    overhealing,
+                    absorbed,
+                    critical,
+                    support_guid,
                 });
             }
             _ => {}

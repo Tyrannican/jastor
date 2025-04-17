@@ -30,6 +30,7 @@ pub enum Event {
         glancing: bool,
         is_offhand: bool,
         damage_type: Option<DamageType>,
+        support_guid: Option<String>,
     },
     Miss {
         source: Option<Unit>,
@@ -42,6 +43,19 @@ pub enum Event {
         total_amount: isize,
         critical: bool,
     },
+    Heal {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        amount: isize,
+        base_amount: isize,
+        overhealing: isize,
+        absorbed: isize,
+        critical: bool,
+        support_guid: Option<String>,
+    },
+
     // Special Events
     CombatLogVersion {
         version: u8,
