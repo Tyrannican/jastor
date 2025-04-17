@@ -5,10 +5,11 @@ use flags::*;
 pub use raw::*;
 
 use crate::{
-    ArgumentHandler,
     error::JastorError,
-    util::param_handler::{ParameterHandler, SliceHander},
+    util::param_handler::{ArgumentHandler, ParameterHandler, SliceHander},
 };
+
+use std::str::FromStr;
 
 // Damage Event Parameters
 // amount, base_amount, overkill, school, resisted, blocked, absorbed, critical, glancing,
@@ -16,16 +17,41 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct EventParser {
+    timestamp: i64,
     event_type: EventType,
     handler: ArgumentHandler,
 }
 
 impl EventParser {
-    pub fn new(event_type: EventType, args: &str) -> Self {
-        Self {
+    pub fn new(args: &str) -> Result<Self, JastorError> {
+        let Some((timestamp, event)) = args.split_once("  ") else {
+            return Err(JastorError::ParseError(format!(
+                "expected timestamp with 2 spaces - got {args}"
+            )));
+        };
+
+        let Some((event_type, args)) = event.split_once(',') else {
+            return Err(JastorError::ParseError(format!(
+                "expected event type to be present - got {event}"
+            )));
+        };
+
+        let timestamp = chrono::NaiveDateTime::parse_from_str(timestamp, "%m/%d/%Y %H:%M:%S%.f")
+            .map_err(|_| {
+                JastorError::ParseError(format!("unable to parse timestamp string: {timestamp}"))
+            })?;
+
+        let event_type = EventType::from_str(event_type)?;
+
+        Ok(Self {
+            timestamp: timestamp.and_utc().timestamp(),
             event_type,
             handler: ArgumentHandler::new(args),
-        }
+        })
+    }
+
+    pub fn skip(&self) -> bool {
+        self.event_type.skip()
     }
 
     pub fn base(&self) -> Result<(Option<Unit>, Option<Unit>), JastorError> {
@@ -44,6 +70,179 @@ impl EventParser {
 
     pub fn advanced(&self) -> Result<Option<AdvancedParameters>, JastorError> {
         AdvancedParameters::parse(self.handler.advanced_parameters(self.event_type)?)
+    }
+
+    pub fn suffix(&self) -> Result<&[String], JastorError> {
+        self.handler.suffix_parameters(self.event_type)
+    }
+
+    pub fn parse(&self) -> Result<Event, JastorError> {
+        if self.event_type.is_special_event() {
+            return self.special_event();
+        }
+
+        self.combat_event()
+    }
+
+    fn combat_event(&self) -> Result<Event, JastorError> {
+        Ok(Event::Placeholder)
+    }
+
+    fn special_event(&self) -> Result<Event, JastorError> {
+        match self.event_type {
+            EventType::CombatLogVersion => {
+                let version = self.handler.as_number::<u8>(0)?;
+                let build = self.handler.as_string(4)?;
+                Ok(Event::CombatLogVersion { version, build })
+            }
+            EventType::ZoneChange => {
+                let instance = self.handler.as_number::<usize>(0)?;
+                let name = self.handler.as_string(1)?;
+                let difficulty = Difficulty::from(self.handler.as_number::<u16>(2)?);
+
+                Ok(Event::ZoneChange {
+                    id: instance,
+                    name,
+                    difficulty,
+                })
+            }
+            EventType::MapChange => {
+                let id = self.handler.as_number::<usize>(0)?;
+                let name = self.handler.as_string(1)?;
+                let x0 = self.handler.as_number::<f32>(2)?;
+                let x1 = self.handler.as_number::<f32>(2)?;
+                let y0 = self.handler.as_number::<f32>(2)?;
+                let y1 = self.handler.as_number::<f32>(2)?;
+
+                Ok(Event::MapChange {
+                    id,
+                    name,
+                    x0,
+                    x1,
+                    y0,
+                    y1,
+                })
+            }
+            EventType::StaggerClear => {
+                let guid = self.handler.as_string(0)?;
+                let value = self.handler.as_number::<f32>(1)?;
+                Ok(Event::StaggerClear { guid, value })
+            }
+            EventType::EncounterStart => {
+                let id = self.handler.as_number::<usize>(0)?;
+                let name = self.handler.as_string(1)?;
+                let difficulty = Difficulty::from(self.handler.as_number::<u16>(2)?);
+                let size = self.handler.as_number::<usize>(3)?;
+                let instance = self.handler.as_number::<usize>(4)?;
+
+                Ok(Event::EncounterStart {
+                    id,
+                    name,
+                    difficulty,
+                    size,
+                    instance,
+                })
+            }
+            EventType::EncounterEnd => {
+                let id = self.handler.as_number::<usize>(0)?;
+                let name = self.handler.as_string(1)?;
+                let difficulty = Difficulty::from(self.handler.as_number::<u16>(2)?);
+                let size = self.handler.as_number::<usize>(3)?;
+                let success = self.handler.boolean_flag(4)?;
+                let length = self.handler.as_number::<u64>(5)?;
+                Ok(Event::EncounterEnd {
+                    id,
+                    name,
+                    difficulty,
+                    size,
+                    success,
+                    length,
+                })
+            }
+            EventType::ArenaMatchStart => {
+                let id = self.handler.as_number::<usize>(0)?;
+                let unk = self.handler.as_number::<usize>(1)?;
+                let match_type = self.handler.as_string(2)?;
+                let team = self.handler.as_number::<usize>(3)?;
+
+                Ok(Event::ArenaMatchStart {
+                    id,
+                    unk,
+                    match_type,
+                    team,
+                })
+            }
+            EventType::ArenaMatchEnd => {
+                let winner = self.handler.as_number::<usize>(0)?;
+                let duration = self.handler.as_number::<u64>(1)?;
+                let team_one_rating = self.handler.as_number::<usize>(2)?;
+                let team_two_rating = self.handler.as_number::<usize>(3)?;
+
+                Ok(Event::ArenaMatchEnd {
+                    winner,
+                    duration,
+                    team_one_rating,
+                    team_two_rating,
+                })
+            }
+            EventType::ChallengeModeStart => {
+                let name = self.handler.as_string(0)?;
+                let id = self.handler.as_number::<usize>(1)?;
+                let challenge_id = self.handler.as_number::<usize>(2)?;
+                let keystone_level = self.handler.as_number::<usize>(3)?;
+                let affix_list = serde_json::from_str::<Vec<u16>>(&self.handler.as_string(4)?)
+                    .map_err(|e| JastorError::ParseError(e.to_string()))?;
+                let affixes = affix_list
+                    .into_iter()
+                    .map(Affix::from)
+                    .collect::<Vec<Affix>>();
+
+                Ok(Event::ChallengeModeStart {
+                    name,
+                    id,
+                    challenge_id,
+                    keystone_level,
+                    affixes,
+                })
+            }
+            EventType::ChallengeModeEnd => {
+                let id = self.handler.as_number::<usize>(0)?;
+                let success = self.handler.boolean_flag(1)?;
+                let keystone_level = self.handler.as_number::<usize>(2)?;
+                let duration = self.handler.as_number::<u64>(3)?;
+
+                Ok(Event::ChallengeModeEnd {
+                    id,
+                    success,
+                    keystone_level,
+                    duration,
+                })
+            }
+            EventType::WorldMarkerPlaced => {
+                let instance = self.handler.as_number::<usize>(0)?;
+                let marker = RaidMarker::from(self.handler.as_number::<u8>(1)?);
+                let x = self.handler.as_number::<f32>(2)?;
+                let y = self.handler.as_number::<f32>(3)?;
+
+                Ok(Event::WorldMarkerPlaced {
+                    instance,
+                    marker,
+                    x,
+                    y,
+                })
+            }
+            EventType::WorldMarkerRemoved => {
+                let marker = RaidMarker::from(self.handler.as_number::<u8>(0)?);
+                Ok(Event::WorldMarkerRemoved { marker })
+            }
+            EventType::CombatantInfo => {
+                println!("{:?}", self.handler.params);
+                todo!()
+            }
+            _ => Err(JastorError::InvalidSpecialEvent(
+                self.event_type.to_string(),
+            )),
+        }
     }
 }
 
@@ -120,6 +319,7 @@ pub enum Event {
     WorldMarkerRemoved {
         marker: RaidMarker,
     },
+    Placeholder,
 }
 
 #[derive(Debug, Clone)]

@@ -16,4 +16,7 @@ pub enum JastorError {
 
     #[error("an error occurred {0}")]
     GenericError(String),
+
+    #[error("expected a special event but found {0}")]
+    InvalidSpecialEvent(String),
 }

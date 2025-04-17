@@ -233,7 +233,7 @@ impl FromStr for EventType {
 
 impl EventType {
     pub fn skip(&self) -> bool {
-        matches!(*self, Self::Emote | Self::CombatantInfo)
+        matches!(*self, Self::Emote)
     }
 
     pub fn prefix_parameters(&self) -> usize {
@@ -319,7 +319,7 @@ impl EventType {
         }
     }
 
-    pub fn has_short_parameters(&self) -> bool {
+    pub fn is_special_event(&self) -> bool {
         matches!(
             *self,
             Self::CombatLogVersion
@@ -329,6 +329,7 @@ impl EventType {
                 | Self::EncounterStart
                 | Self::EncounterEnd
                 | Self::ChallengeModeStart
+                | Self::CombatantInfo
                 | Self::ChallengeModeEnd
                 | Self::WorldMarkerPlaced
                 | Self::WorldMarkerRemoved
