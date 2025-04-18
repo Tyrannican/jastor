@@ -241,6 +241,12 @@ impl EventParser {
                     critical,
                 });
             }
+            EventType::SpellHealAbsorbed | EventType::SpellPeriodicHealAbsorbed => {
+                let spell_info = self.spell_prefix()?;
+                let suffix = self.suffix()?;
+                println!("{}\n{spell_info:?}\n{suffix:?}", self.event_type);
+                println!();
+            }
             _ => {}
         }
         Ok(Event::Placeholder)
