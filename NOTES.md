@@ -60,3 +60,24 @@ Damage events have the following parameters:
     * `ST`: For single target Damage
     * `AOE`: For AoE damage
     * `SWING_DAMAGE` and `SWING_DAMAGE_LANDED` **DO NOT** have this parameter
+
+### Absorb Event
+
+`SPELL_ABSORB` can be missing the Spell Prefix if the previous event was `SPELL_DAMAGE`.
+
+Have the following parameters:
+
+* The first 4 parameters are a `Unit` parameters of the Caster 
+    * `guid`: GUID of the caster
+    * `name`: Name of the caster
+    * `flags`: Caster flags
+    * `raid_flags`: Caster Raid markers 
+
+* The next 3 are the absorbed `Spell`
+    * `spell_id`: Absorbed spell ID
+    * `spell_name`: Name of the absorbed spell
+    * `spell_school`: Absorbed spell school
+
+* `amount`: The amount abosrbed
+* `total_amount` or `base_amount`: It's one of the two, the `amount` always seems to be lower that this value.
+* `critical`: If the absorb was critical or not (boolean)
