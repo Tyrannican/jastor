@@ -67,6 +67,17 @@ pub enum Event {
         critical: bool,
     },
 
+    HealAbsorb {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        extra_unit: Option<Unit>,
+        extra_spell_info: Option<SpellInfo>,
+        absorbed_amount: isize,
+        total_amount: isize,
+    },
+
     // Special Events
     CombatLogVersion {
         version: u8,

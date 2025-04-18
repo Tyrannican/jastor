@@ -243,9 +243,23 @@ impl EventParser {
             }
             EventType::SpellHealAbsorbed | EventType::SpellPeriodicHealAbsorbed => {
                 let spell_info = self.spell_prefix()?;
-                let suffix = self.suffix()?;
-                println!("{}\n{spell_info:?}\n{suffix:?}", self.event_type);
-                println!();
+                let handler = SliceHander::new(self.suffix()?);
+
+                let extra_unit = Unit::parse(handler.range(..4)?).ok();
+                let extra_spell_info = SpellInfo::parse(handler.range(4..7)?).ok();
+                let absorbed_amount = handler.as_number::<isize>(7)?;
+                let total_amount = handler.as_number::<isize>(8)?;
+
+                return Ok(Event::HealAbsorb {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    extra_unit,
+                    extra_spell_info,
+                    absorbed_amount,
+                    total_amount,
+                });
             }
             _ => {}
         }
