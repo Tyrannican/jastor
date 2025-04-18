@@ -55,6 +55,17 @@ pub enum Event {
         critical: bool,
         support_guid: Option<String>,
     },
+    Absorb {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        caster: Option<Unit>,
+        absorbed_spell: Option<SpellInfo>,
+        amount: isize,
+        total_amount: isize,
+        critical: bool,
+    },
 
     // Special Events
     CombatLogVersion {

@@ -1,7 +1,7 @@
 use crate::{
     error::JastorError,
     event::*,
-    util::param_handler::{ArgumentHandler, ParameterHandler, SliceHander},
+    util::param_handler::{ArgumentHandler, BASE_PARAMETERS_IDX, ParameterHandler, SliceHander},
 };
 
 use std::str::FromStr;
@@ -188,12 +188,11 @@ impl EventParser {
                 let absorbed = handler.as_number::<isize>(3)?;
                 let critical = handler.as_boolean(4)?;
 
-                let support_guid = if self.event_type == EventType::SpellPeriodicHealSupport
-                    || self.event_type == EventType::SpellHealSupport
-                {
-                    Some(handler.as_string(5)?)
-                } else {
-                    None
+                let support_guid = match self.event_type {
+                    EventType::SpellPeriodicHealSupport | EventType::SpellHealSupport => {
+                        Some(handler.as_string(5)?)
+                    }
+                    _ => None,
                 };
 
                 return Ok(Event::Heal {
@@ -207,6 +206,39 @@ impl EventParser {
                     absorbed,
                     critical,
                     support_guid,
+                });
+            }
+            // SPELL_ABSORB can be missing the Spell Info parameters if previous event was
+            // SPELL_DAMAGE
+            EventType::SpellAbsorbed | EventType::SpellPeriodicAbsorbed => {
+                let spell_info = match self.spell_prefix() {
+                    Ok(s) => s,
+                    Err(_) => None,
+                };
+
+                let suffix = match spell_info {
+                    Some(_) => self.suffix()?,
+                    None => self.handler.range(BASE_PARAMETERS_IDX..)?,
+                };
+
+                let caster = Unit::parse(&suffix[..4]).ok();
+                let absorbed_spell = SpellInfo::parse(&suffix[4..7]).ok();
+                let handler = SliceHander::new(suffix);
+
+                let amount = handler.as_number::<isize>(7)?;
+                let total_amount = handler.as_number::<isize>(8)?;
+                let critical = handler.as_boolean(9)?;
+
+                return Ok(Event::Absorb {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    caster,
+                    absorbed_spell,
+                    amount,
+                    total_amount,
+                    critical,
                 });
             }
             _ => {}

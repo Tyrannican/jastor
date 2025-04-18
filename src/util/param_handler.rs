@@ -1,14 +1,21 @@
 use num_traits::{Num, NumCast};
-use std::{fmt::Display, str::FromStr};
+use std::{
+    fmt::Display,
+    ops::{Bound, RangeBounds},
+    str::FromStr,
+};
 
 use crate::{error::JastorError, event::EventType};
 
-const BASE_PARAMETERS_IDX: usize = 8;
+pub(crate) const BASE_PARAMETERS_IDX: usize = 8;
 const ADVANCED_PARAM_LEN: usize = 19;
 
 pub trait ParameterHandler {
     fn len(&self) -> usize;
     fn raw(&self, idx: usize) -> Result<&String, JastorError>;
+    fn range<R>(&self, range: R) -> Result<&[String], JastorError>
+    where
+        R: RangeBounds<usize>;
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError>;
     fn as_string(&self, idx: usize) -> Result<String, JastorError>;
     fn as_boolean(&self, idx: usize) -> Result<bool, JastorError>;
@@ -132,6 +139,33 @@ impl ParameterHandler for ArgumentHandler {
         Ok(&self.params[idx])
     }
 
+    fn range<R>(&self, range: R) -> Result<&[String], JastorError>
+    where
+        R: RangeBounds<usize>,
+    {
+        let start = match range.start_bound() {
+            Bound::Included(idx) => {
+                self.valid_idx(*idx)?;
+                *idx
+            }
+            _ => 0,
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(idx) => {
+                self.valid_idx(*idx)?;
+                *idx
+            }
+            Bound::Excluded(idx) => {
+                self.valid_idx(*idx - 1)?;
+                *idx
+            }
+            Bound::Unbounded => self.params.len(),
+        };
+
+        Ok(&self.params[start..end])
+    }
+
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {
         if idx >= self.params.len() {
             return Err(JastorError::GenericError(format!(
@@ -240,6 +274,33 @@ impl ParameterHandler for SliceHander<'_> {
     fn raw(&self, idx: usize) -> Result<&String, JastorError> {
         self.valid_idx(idx)?;
         Ok(&self.params[idx])
+    }
+
+    fn range<R>(&self, range: R) -> Result<&[String], JastorError>
+    where
+        R: RangeBounds<usize>,
+    {
+        let start = match range.start_bound() {
+            Bound::Included(idx) => {
+                self.valid_idx(*idx)?;
+                *idx
+            }
+            _ => 0,
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(idx) => {
+                self.valid_idx(*idx)?;
+                *idx
+            }
+            Bound::Excluded(idx) => {
+                self.valid_idx(*idx - 1)?;
+                *idx
+            }
+            Bound::Unbounded => self.params.len(),
+        };
+
+        Ok(&self.params[start..end])
     }
 
     fn valid_idx(&self, idx: usize) -> Result<(), JastorError> {

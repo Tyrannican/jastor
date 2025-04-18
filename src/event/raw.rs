@@ -353,6 +353,7 @@ impl EventType {
                 | Self::SpellAuraBrokenSpell
                 | Self::SpellAuraBroken
                 | Self::SpellAbsorbed
+                | Self::SpellPeriodicAbsorbed
                 | Self::SpellDispel
                 | Self::SpellPeriodicMissed
                 | Self::SpellHealAbsorbed
