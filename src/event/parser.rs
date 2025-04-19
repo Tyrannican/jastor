@@ -352,6 +352,67 @@ impl EventParser {
                     failed,
                 });
             }
+            EventType::SpellStolen | EventType::SpellPeriodicStolen => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let extra_spell = SpellInfo::parse(handler.range(..3)?).ok();
+                let aura_type = AuraType::from_str(handler.raw(3)?)?;
+
+                return Ok(Event::Stolen {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    extra_spell,
+                    aura_type,
+                });
+            }
+            EventType::SpellAuraApplied
+            | EventType::SpellAuraAppliedDose
+            | EventType::SpellAuraRemoved
+            | EventType::SpellAuraRemovedDose
+            | EventType::SpellAuraRefresh
+            | EventType::SpellAuraBroken
+            | EventType::SpellPeriodicAuraApplied
+            | EventType::SpellPeriodicAuraAppliedDose
+            | EventType::SpellPeriodicAuraRemoved
+            | EventType::SpellPeriodicAuraRemovedDose
+            | EventType::SpellPeriodicAuraRefresh
+            | EventType::SpellPeriodicAuraBroken
+            | EventType::SpellPeriodicAuraBrokenSpell
+            | EventType::SpellAuraBrokenSpell => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+
+                match self.event_type {
+                    EventType::SpellAuraBrokenSpell | EventType::SpellPeriodicAuraBrokenSpell => {
+                        let extra_spell = SpellInfo::parse(handler.range(..3)?).ok();
+                        let aura_type = AuraType::from_str(handler.raw(3)?)?;
+                        return Ok(Event::Aura {
+                            source,
+                            target,
+                            spell_info,
+                            advanced,
+                            extra_spell,
+                            aura_type,
+                            amount: 0,
+                        });
+                    }
+                    _ => {
+                        let aura_type = AuraType::from_str(handler.raw(0)?)?;
+                        let amount = handler.as_number::<isize>(1).unwrap_or(0);
+                        return Ok(Event::Aura {
+                            source,
+                            target,
+                            spell_info,
+                            advanced,
+                            extra_spell: None,
+                            aura_type,
+                            amount,
+                        });
+                    }
+                }
+            }
             _ => {}
         }
         Ok(Event::Placeholder)

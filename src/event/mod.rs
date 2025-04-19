@@ -128,6 +128,25 @@ pub enum Event {
         failed: bool,
     },
 
+    Stolen {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        extra_spell: Option<SpellInfo>,
+        aura_type: AuraType,
+    },
+
+    Aura {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        aura_type: AuraType,
+        amount: isize,
+        extra_spell: Option<SpellInfo>,
+    },
+
     // Special Events
     CombatLogVersion {
         version: u8,
