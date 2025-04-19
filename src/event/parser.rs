@@ -1,7 +1,7 @@
 use crate::{
     error::JastorError,
     event::*,
-    util::param_handler::{ArgumentHandler, BASE_PARAMETERS_IDX, ParameterHandler, SliceHander},
+    util::param_handler::{ArgumentHandler, BASE_PARAMETERS_IDX, ParameterHandler, SliceHandler},
 };
 
 use std::str::FromStr;
@@ -95,7 +95,7 @@ impl EventParser {
             | EventType::DamageShield
             | EventType::SwingDamageLanded => {
                 let spell_info = self.spell_prefix()?;
-                let handler = SliceHander::new(self.suffix()?);
+                let handler = SliceHandler::new(self.suffix()?);
 
                 let amount = handler.as_number::<isize>(0)?;
                 let base_amount = handler.as_number::<isize>(1)?;
@@ -148,7 +148,7 @@ impl EventParser {
             | EventType::RangeMissed
             | EventType::SwingMissed => {
                 let spell_info = self.spell_prefix()?;
-                let handler = SliceHander::new(self.suffix()?);
+                let handler = SliceHandler::new(self.suffix()?);
                 let miss_type = MissType::from_str(handler.raw(0)?)?;
                 let is_offhand = handler.as_boolean(1)?;
                 let (amount, total_amount, critical) = match miss_type {
@@ -180,7 +180,7 @@ impl EventParser {
             | EventType::SpellHealSupport
             | EventType::SpellPeriodicHealSupport => {
                 let spell_info = self.spell_prefix()?;
-                let handler = SliceHander::new(self.suffix()?);
+                let handler = SliceHandler::new(self.suffix()?);
 
                 let amount = handler.as_number::<isize>(0)?;
                 let base_amount = handler.as_number::<isize>(1)?;
@@ -223,7 +223,7 @@ impl EventParser {
 
                 let caster = Unit::parse(&suffix[..4]).ok();
                 let absorbed_spell = SpellInfo::parse(&suffix[4..7]).ok();
-                let handler = SliceHander::new(suffix);
+                let handler = SliceHandler::new(suffix);
 
                 let amount = handler.as_number::<isize>(7)?;
                 let total_amount = handler.as_number::<isize>(8)?;
@@ -243,7 +243,7 @@ impl EventParser {
             }
             EventType::SpellHealAbsorbed | EventType::SpellPeriodicHealAbsorbed => {
                 let spell_info = self.spell_prefix()?;
-                let handler = SliceHander::new(self.suffix()?);
+                let handler = SliceHandler::new(self.suffix()?);
 
                 let extra_unit = Unit::parse(handler.range(..4)?).ok();
                 let extra_spell_info = SpellInfo::parse(handler.range(4..7)?).ok();
@@ -259,6 +259,97 @@ impl EventParser {
                     extra_spell_info,
                     absorbed_amount,
                     total_amount,
+                });
+            }
+            EventType::SpellExtraAttacks | EventType::SpellPeriodicExtraAttacks => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let amount = handler.as_number::<isize>(0)?;
+
+                return Ok(Event::ExtraAttacks {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    amount,
+                });
+            }
+            EventType::SpellEnergize | EventType::SpellPeriodicEnergize => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+
+                let amount = handler.as_number::<f32>(0)?;
+                let over_energize = handler.as_number::<f32>(1)?;
+                let power_type = PowerType::from(handler.as_number::<u8>(2)?);
+                let max_power = handler.as_number::<usize>(3)?;
+
+                return Ok(Event::Energize {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    amount,
+                    over_energize,
+                    power_type,
+                    max_power,
+                });
+            }
+            EventType::SpellDrain | EventType::SpellPeriodicDrain => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+
+                let amount = handler.as_number::<isize>(0)?;
+                let power_type = PowerType::from(handler.as_number::<u8>(1)?);
+                let extra_amount = handler.as_number::<isize>(2)?;
+                let max_power = handler.as_number::<usize>(3)?;
+
+                return Ok(Event::Drain {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    amount,
+                    power_type,
+                    extra_amount,
+                    max_power,
+                });
+            }
+            EventType::SpellLeech | EventType::SpellPeriodicLeech => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+
+                let amount = handler.as_number::<isize>(0)?;
+                let power_type = PowerType::from(handler.as_number::<u8>(1)?);
+                let extra_amount = handler.as_number::<isize>(2)?;
+
+                return Ok(Event::Leech {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    amount,
+                    power_type,
+                    extra_amount,
+                });
+            }
+            EventType::SpellDispel | EventType::SpellDispelFailed => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let extra_spell = SpellInfo::parse(handler.range(..3)?).ok();
+                let (aura_type, failed) = if self.event_type == EventType::SpellDispel {
+                    (Some(AuraType::from_str(handler.raw(3)?)?), false)
+                } else {
+                    (None, true)
+                };
+
+                return Ok(Event::Dispel {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    extra_spell,
+                    aura_type,
+                    failed,
                 });
             }
             _ => {}
@@ -421,5 +512,15 @@ impl EventParser {
                 self.event_type.to_string(),
             )),
         }
+    }
+
+    fn debug(&self) {
+        println!(
+            "{}\n{:?}\n{:?}",
+            self.event_type,
+            self.spell_prefix().expect("debug error - spell prefix"),
+            self.suffix().expect("debug error - suffix"),
+        );
+        println!();
     }
 }

@@ -225,11 +225,11 @@ impl ParameterHandler for ArgumentHandler {
 }
 
 #[derive(Debug, Clone)]
-pub struct SliceHander<'a> {
+pub struct SliceHandler<'a> {
     params: &'a [String],
 }
 
-impl<'a> SliceHander<'a> {
+impl<'a> SliceHandler<'a> {
     pub fn new(params: &'a [String]) -> Self {
         Self { params }
     }
@@ -266,7 +266,7 @@ impl<'a> SliceHander<'a> {
     }
 }
 
-impl ParameterHandler for SliceHander<'_> {
+impl ParameterHandler for SliceHandler<'_> {
     fn len(&self) -> usize {
         self.params.len()
     }

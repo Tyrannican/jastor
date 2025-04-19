@@ -7,7 +7,7 @@ pub use raw::*;
 
 use crate::{
     error::JastorError,
-    util::param_handler::{ParameterHandler, SliceHander},
+    util::param_handler::{ParameterHandler, SliceHandler},
 };
 
 #[derive(Debug)]
@@ -76,6 +76,56 @@ pub enum Event {
         extra_spell_info: Option<SpellInfo>,
         absorbed_amount: isize,
         total_amount: isize,
+    },
+
+    ExtraAttacks {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        amount: isize,
+    },
+
+    Energize {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        amount: f32,
+        over_energize: f32,
+        power_type: PowerType,
+        max_power: usize,
+    },
+
+    Drain {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        amount: isize,
+        power_type: PowerType,
+        extra_amount: isize,
+        max_power: usize,
+    },
+
+    Leech {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        amount: isize,
+        power_type: PowerType,
+        extra_amount: isize,
+    },
+
+    Dispel {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        extra_spell: Option<SpellInfo>,
+        aura_type: Option<AuraType>,
+        failed: bool,
     },
 
     // Special Events
@@ -196,7 +246,7 @@ impl AdvancedParameters {
             return Ok(None);
         };
 
-        let handler = SliceHander::new(params);
+        let handler = SliceHandler::new(params);
         let (_, current_power) = handler.as_multi_value_number::<usize>(11)?;
         let (_, max_power) = handler.as_multi_value_number::<usize>(11)?;
         let (_, power_cost) = handler.as_multi_value_number::<usize>(11)?;
@@ -228,7 +278,7 @@ pub struct Unit {
 
 impl Unit {
     pub fn parse(params: &[String]) -> Result<Self, JastorError> {
-        let handler = SliceHander::new(params);
+        let handler = SliceHandler::new(params);
         let guid = handler.as_string(0)?;
         let name = handler.as_string(1)?;
         let flags = UnitFlag::parse(handler.as_number::<u32>(2)?)?;
@@ -252,7 +302,7 @@ pub struct SpellInfo {
 
 impl SpellInfo {
     pub fn parse(input: &[String]) -> Result<Self, JastorError> {
-        let handler = SliceHander::new(input);
+        let handler = SliceHandler::new(input);
         let id = handler.as_number::<usize>(0)?;
         let name = handler.as_string(1)?;
         let school = SpellSchool::from(handler.as_number::<u8>(2)?);
