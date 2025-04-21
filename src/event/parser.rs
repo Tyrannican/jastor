@@ -413,6 +413,29 @@ impl EventParser {
                     }
                 }
             }
+            EventType::SpellCastStart
+            | EventType::SpellCastSuccess
+            | EventType::SpellCastFailed
+            | EventType::SpellPeriodicCastStart
+            | EventType::SpellPeriodicCastSuccess
+            | EventType::SpellPeriodicCastFailed => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let failed = match self.event_type {
+                    EventType::SpellCastFailed | EventType::SpellPeriodicCastFailed => {
+                        Some(handler.as_string(0)?)
+                    }
+                    _ => None,
+                };
+
+                return Ok(Event::Cast {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    failed,
+                });
+            }
             _ => {}
         }
         Ok(Event::Placeholder)

@@ -147,6 +147,14 @@ pub enum Event {
         extra_spell: Option<SpellInfo>,
     },
 
+    Cast {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        failed: Option<String>,
+    },
+
     // Special Events
     CombatLogVersion {
         version: u8,
