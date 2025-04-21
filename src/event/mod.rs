@@ -12,8 +12,6 @@ use crate::{
 
 #[derive(Debug)]
 pub enum Event {
-    // amount, base_amount, overkill, school, resisted, blocked, absorbed, critical, glancing,
-    // is_offhand
     Damage {
         source: Option<Unit>,
         target: Option<Unit>,
@@ -153,6 +151,35 @@ pub enum Event {
         spell_info: Option<SpellInfo>,
         advanced: Option<AdvancedParameters>,
         failed: Option<String>,
+    },
+
+    Kill {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        unconscious: bool,
+    },
+
+    Create {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+    },
+
+    Summon {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+    },
+
+    Resurrect {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
     },
 
     // Special Events

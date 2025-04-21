@@ -436,6 +436,46 @@ impl EventParser {
                     failed,
                 });
             }
+            EventType::SpellInstaKill | EventType::SpellPeriodicInstaKill => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let unconscious = handler.as_boolean(0)?;
+
+                return Ok(Event::Kill {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    unconscious,
+                });
+            }
+            EventType::SpellResurrect => {
+                let spell_info = self.spell_prefix()?;
+                return Ok(Event::Resurrect {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                });
+            }
+            EventType::SpellCreate => {
+                let spell_info = self.spell_prefix()?;
+                return Ok(Event::Create {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                });
+            }
+            EventType::SpellSummon => {
+                let spell_info = self.spell_prefix()?;
+                return Ok(Event::Summon {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                });
+            }
             _ => {}
         }
         Ok(Event::Placeholder)
