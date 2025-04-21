@@ -11,6 +11,9 @@ pub enum JastorError {
     #[error("encountered an unknown event {0}")]
     UnknownEvent(String),
 
+    #[error("unhandled event {0}")]
+    UnhandledEvent(String),
+
     #[error("unknown value encountered {0}")]
     UnknownValue(String),
 

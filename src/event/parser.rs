@@ -141,6 +141,37 @@ impl EventParser {
                     support_guid,
                 });
             }
+            EventType::EnvironmentalDamage => {
+                let handler = SliceHandler::new(self.suffix()?);
+                let environmental_type = EnvironmentalType::from_str(handler.raw(0)?)?;
+                let amount = handler.as_number::<isize>(1)?;
+                let base_amount = handler.as_number::<isize>(2)?;
+                let overkill = handler.as_number::<isize>(3)?;
+                let school = SpellSchool::from(handler.as_number::<u8>(4)?);
+                let resisted = handler.as_number::<isize>(5)?;
+                let blocked = handler.as_number::<isize>(6)?;
+                let absorbed = handler.as_number::<isize>(7)?;
+                let critical = handler.as_boolean(8)?;
+                let glancing = handler.as_boolean(9)?;
+                let is_offhand = handler.as_boolean(10)?;
+
+                return Ok(Event::EnvironmentalDamage {
+                    source,
+                    target,
+                    advanced,
+                    environmental_type,
+                    amount,
+                    base_amount,
+                    overkill,
+                    school,
+                    resisted,
+                    blocked,
+                    absorbed,
+                    critical,
+                    glancing,
+                    is_offhand,
+                });
+            }
             EventType::SpellMissed
             | EventType::SpellPeriodicMissed
             | EventType::SpellBuildingMissed
@@ -367,6 +398,19 @@ impl EventParser {
                     aura_type,
                 });
             }
+            EventType::SpellInterrupt | EventType::SpellPeriodicInterrupt => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let target_spell = SpellInfo::parse(handler.range(..3)?)?;
+
+                return Ok(Event::Interrupt {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    target_spell,
+                });
+            }
             EventType::SpellAuraApplied
             | EventType::SpellAuraAppliedDose
             | EventType::SpellAuraRemoved
@@ -436,7 +480,12 @@ impl EventParser {
                     failed,
                 });
             }
-            EventType::SpellInstaKill | EventType::SpellPeriodicInstaKill => {
+            EventType::SpellInstaKill
+            | EventType::SpellPeriodicInstaKill
+            | EventType::UnitDied
+            | EventType::PartyKill
+            | EventType::UnitDestroyed
+            | EventType::UnitDissapates => {
                 let spell_info = self.spell_prefix()?;
                 let handler = SliceHandler::new(self.suffix()?);
                 let unconscious = handler.as_boolean(0)?;
@@ -476,9 +525,30 @@ impl EventParser {
                     advanced,
                 });
             }
+            EventType::SpellEmpowerStart
+            | EventType::SpellEmpowerEnd
+            | EventType::SpellEmpowerInterrupt => {
+                let spell_info = self.spell_prefix()?;
+                let handler = SliceHandler::new(self.suffix()?);
+                let empower_rank = match self.event_type {
+                    EventType::SpellEmpowerEnd | EventType::SpellEmpowerInterrupt => {
+                        Some(handler.as_number::<u8>(0)?)
+                    }
+                    _ => None,
+                };
+
+                return Ok(Event::Empower {
+                    source,
+                    target,
+                    spell_info,
+                    advanced,
+                    empower_rank,
+                });
+            }
             _ => {}
         }
-        Ok(Event::Placeholder)
+
+        Err(JastorError::UnhandledEvent(self.event_type.to_string()))
     }
 
     fn special_event(&self) -> Result<Event, JastorError> {
@@ -639,9 +709,11 @@ impl EventParser {
     }
 
     fn debug(&self) {
+        let (source, target) = self.units().expect("expected a source and a target");
         println!(
-            "{}\n{:?}\n{:?}",
+            "{}\nRaw params: {:?}\nSource: {source:?}\nTarget: {target:?}\nSpell: {:?}\nSuffix: {:?}",
             self.event_type,
+            self.handler.params,
             self.spell_prefix().expect("debug error - spell prefix"),
             self.suffix().expect("debug error - suffix"),
         );

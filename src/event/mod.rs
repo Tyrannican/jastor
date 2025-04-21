@@ -30,6 +30,22 @@ pub enum Event {
         damage_type: Option<DamageType>,
         support_guid: Option<String>,
     },
+    EnvironmentalDamage {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        advanced: Option<AdvancedParameters>,
+        environmental_type: EnvironmentalType,
+        amount: isize,
+        base_amount: isize,
+        overkill: isize,
+        school: SpellSchool,
+        resisted: isize,
+        blocked: isize,
+        absorbed: isize,
+        critical: bool,
+        glancing: bool,
+        is_offhand: bool,
+    },
     Miss {
         source: Option<Unit>,
         target: Option<Unit>,
@@ -126,6 +142,14 @@ pub enum Event {
         failed: bool,
     },
 
+    Interrupt {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        target_spell: SpellInfo,
+    },
+
     Stolen {
         source: Option<Unit>,
         target: Option<Unit>,
@@ -180,6 +204,14 @@ pub enum Event {
         target: Option<Unit>,
         spell_info: Option<SpellInfo>,
         advanced: Option<AdvancedParameters>,
+    },
+
+    Empower {
+        source: Option<Unit>,
+        target: Option<Unit>,
+        spell_info: Option<SpellInfo>,
+        advanced: Option<AdvancedParameters>,
+        empower_rank: Option<u8>,
     },
 
     // Special Events
