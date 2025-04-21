@@ -1,15 +1,17 @@
 use jastor::{CombatLogParser, error::JastorError};
 
 fn main() -> Result<(), JastorError> {
-    let infile = "combat.log";
-    let mut p = CombatLogParser::default();
-    p.parse(infile)?;
-    println!("Parsed {} events from \"{infile}\"", p.total_events());
-
-    let infile = "2combat.log";
-    let mut p = CombatLogParser::default();
-    p.parse(infile)?;
-    println!("Parsed {} events from \"{infile}\"", p.total_events());
+    for infile in [
+        "logs/combat.log",
+        "logs/combat2.log",
+        "logs/combat3.log",
+        "logs/combat4.log",
+        "logs/combat5.log",
+    ] {
+        let mut p = CombatLogParser::default();
+        p.parse(infile)?;
+        println!("Parsed {} events from \"{infile}\"", p.total_events());
+    }
 
     Ok(())
 }
