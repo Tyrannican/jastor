@@ -1,3 +1,4 @@
+pub mod encounter;
 pub mod error;
 pub mod event;
 pub(crate) mod util;
@@ -30,7 +31,46 @@ impl CombatLogParser {
                 continue;
             }
 
-            self.events.push(parser.parse()?);
+            let event = match parser.parse()? {
+                Event::EncounterStart {
+                    id,
+                    name,
+                    difficulty,
+                    size,
+                    instance,
+                } => {
+                    println!("Encounter Start: {name} - {difficulty:?} - {size}");
+                    Event::EncounterStart {
+                        id,
+                        name,
+                        difficulty,
+                        size,
+                        instance,
+                    }
+                }
+                Event::EncounterEnd {
+                    id,
+                    name,
+                    difficulty,
+                    size,
+                    success,
+                    length,
+                } => {
+                    println!(
+                        "Encounter End: {name} - {difficulty:?} - {size} - {length} - Success: {success}\n"
+                    );
+                    Event::EncounterEnd {
+                        id,
+                        name,
+                        difficulty,
+                        size,
+                        success,
+                        length,
+                    }
+                }
+                event => event,
+            };
+            self.events.push(event);
             self.size += 1;
         }
 
