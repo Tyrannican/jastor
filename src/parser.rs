@@ -1,7 +1,8 @@
 use std::io::BufRead;
 
 use crate::event::{
-    Difficulty, Event, EventType, LogVersionEvent, MapChangeEvent, ZoneChangeEvent,
+    Difficulty, Event, EventType, Guid, LogVersionEvent, MapChangeEvent, StaggerEvent,
+    ZoneChangeEvent,
 };
 use eyre::{Context, Result, eyre};
 use jiff::{civil::DateTime, fmt::strtime};
@@ -45,6 +46,9 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::CombatLogVersion => Event::LogVersion(self.parse_header(args)?),
             EventType::ZoneChange => Event::ZoneChange(self.parse_zone_change(args)?),
             EventType::MapChange => Event::MapChange(self.parse_map_change(args)?),
+            EventType::StaggerPrevented | EventType::StaggerClear => {
+                Event::Stagger(self.parse_stagger_event(event_type, args)?)
+            }
             _ => todo!("not implemented yet - {event_type}"),
         };
 
@@ -126,6 +130,43 @@ impl<R: BufRead> EventLogParser<R> {
             x1,
             y0,
             y1,
+        })
+    }
+
+    fn parse_stagger_event(&self, event_type: EventType, args: &str) -> Result<StaggerEvent> {
+        let args = args.split(',').collect::<Vec<&str>>();
+        let target_len = match event_type {
+            EventType::StaggerPrevented => 3,
+            EventType::StaggerClear => 2,
+            _ => unreachable!("impossible as only those two are passed in"),
+        };
+
+        assert_eq!(args.len(), target_len);
+
+        let guid = Guid(args[0].to_string());
+        let (spell_id, amount): (Option<u32>, f32) = if event_type == EventType::StaggerPrevented {
+            let spell_id =
+                Some(args[1].parse::<u32>().wrap_err_with(|| {
+                    format!("unable to parse spell id for stagger - {}", args[1])
+                })?);
+            let amount = args[2]
+                .parse::<f32>()
+                .wrap_err_with(|| format!("unable to parse stagger amount - {}", args[2]))?;
+
+            (spell_id, amount)
+        } else {
+            (
+                None,
+                args[1]
+                    .parse::<f32>()
+                    .wrap_err_with(|| format!("unable to parse stagger amount - {}", args[2]))?,
+            )
+        };
+
+        Ok(StaggerEvent {
+            guid,
+            spell_id,
+            amount,
         })
     }
 }

@@ -12,6 +12,7 @@ pub use crate::{
 pub enum Event {
     LogVersion(LogVersionEvent),
     Combat(CombatEvent),
+    Stagger(StaggerEvent),
     Combatant(Combatant),
     EncounterStart(EncounterStartEvent),
     EncounterEnd(EncounterEndEvent),
@@ -252,4 +253,11 @@ pub struct ZoneChangeEvent {
 pub struct EmoteEvent {
     src: Target,
     text: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct StaggerEvent {
+    pub guid: Guid,
+    pub spell_id: Option<u32>,
+    pub amount: f32,
 }

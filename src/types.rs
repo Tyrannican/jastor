@@ -1,7 +1,9 @@
 use eyre::{Report, eyre};
 
+use crate::event::ArenaStartEvent;
+
 #[derive(Debug, Clone)]
-pub struct Guid(String);
+pub struct Guid(pub String);
 
 #[derive(Debug, Clone)]
 pub struct Target {
@@ -80,6 +82,33 @@ pub enum EventType {
     WorldMarkerPlaced,
     WorldMarkerRemoved,
 }
+
+impl EventType {
+    pub fn has_spell_parameters(&self) -> bool {
+        match self {
+            Self::ArenaMatchStart
+            | Self::ArenaMatchEnd
+            | Self::EncounterStart
+            | Self::EncounterEnd
+            | Self::ChallengeModeStart
+            | Self::ChallengeModeEnd
+            | Self::WorldMarkerPlaced
+            | Self::WorldMarkerRemoved
+            | Self::ZoneChange
+            | Self::MapChange
+            | Self::CombatLogVersion
+            | Self::CombatantInfo
+            | Self::Emote
+            | Self::StaggerPrevented
+            | Self::StaggerClear
+            | Self::UnitDied
+            | Self::UnitDestroyed
+            | Self::UnitDissipates => false,
+            _ => true,
+        }
+    }
+}
+
 impl TryFrom<&str> for EventType {
     type Error = Report;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -154,6 +183,7 @@ impl TryFrom<&str> for EventType {
         }
     }
 }
+
 impl std::fmt::Display for EventType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
