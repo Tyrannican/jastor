@@ -1,8 +1,34 @@
 use jiff::civil::DateTime;
 
-pub use crate::types::{
-    AuraType, EnvironmentalType, EventType, MissType, PowerType, RaidFlag, SpellSchool, UnitFlags,
+pub use crate::{
+    player::Combatant,
+    types::{
+        AuraType, Difficulty, EnvironmentalType, EventType, Guid, MissType, PowerType, RaidFlag,
+        SpellSchool, Target, UnitFlags,
+    },
 };
+
+#[derive(Debug, Clone)]
+pub enum Event {
+    LogVersion(LogVersionEvent),
+    Combat(CombatEvent),
+    Combatant(Combatant),
+    EncounterStart(EncounterStartEvent),
+    EncounterEnd(EncounterEndEvent),
+    ArenaStart(ArenaStartEvent),
+    ArenaEnd(ArenaEndEvent),
+    WorldMarkerPlaced(WorldMarkerPlacedEvent),
+    WorldMarkerRemoved(RaidFlag),
+    ZoneChange(ZoneChangeEvent),
+    MapChange(MapChangeEvent),
+}
+
+#[derive(Debug, Clone)]
+pub struct LogVersionEvent {
+    pub version: u32,
+    pub advanced_log: bool,
+    pub build: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct CombatEvent {
@@ -14,17 +40,6 @@ pub struct CombatEvent {
     environmental: Option<EnvironmentalType>,
     adv: Option<AdvancedParameters>,
     suffix: Option<Suffix>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Guid(String);
-
-#[derive(Debug, Clone)]
-pub struct Target {
-    guid: Guid,
-    name: String,
-    unit_flags: UnitFlags,
-    raid_flags: RaidFlag,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +95,9 @@ pub enum Suffix {
     AuraBrokenSpell(AuraWithSpellEvent),
     Empower(u32),
     Enchant(EnchantEvent),
+    UnitDied(u32),
+    UnitDestroyed(u32),
+    UnitDissipates(u32),
 }
 
 #[derive(Debug, Clone)]
@@ -174,8 +192,7 @@ pub struct EnchantEvent {
 pub struct EncounterStartEvent {
     encounter_id: u32,
     encounter_name: String,
-    // TODO: Difficulty ID mapping
-    difficulty: u32,
+    difficulty: Difficulty,
     group_size: u32,
     instance_id: u32,
 }
@@ -184,11 +201,26 @@ pub struct EncounterStartEvent {
 pub struct EncounterEndEvent {
     encounter_id: u32,
     encounter_name: String,
-    // TODO: Difficulty ID mapping
-    difficulty: u32,
+    difficulty: Difficulty,
     group_size: u32,
     success: bool,
     fight_time: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArenaStartEvent {
+    instance_id: u32,
+    unk: u32,
+    match_type: String,
+    team_id: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArenaEndEvent {
+    winning_team: bool,
+    match_duration: u32,
+    new_rating_team_one: u32,
+    new_rating_team_two: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -200,4 +232,24 @@ pub struct WorldMarkerPlacedEvent {
 }
 
 #[derive(Debug, Clone)]
-pub struct WorldMarkerRemovedEvent(RaidFlag);
+pub struct MapChangeEvent {
+    pub map_id: u32,
+    pub map_name: String,
+    pub x0: f32,
+    pub x1: f32,
+    pub y0: f32,
+    pub y1: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZoneChangeEvent {
+    pub instance_id: u32,
+    pub zone_name: String,
+    pub difficulty: Difficulty,
+}
+
+#[derive(Debug, Clone)]
+pub struct EmoteEvent {
+    src: Target,
+    text: String,
+}

@@ -1,5 +1,16 @@
 use eyre::{Report, eyre};
 
+#[derive(Debug, Clone)]
+pub struct Guid(String);
+
+#[derive(Debug, Clone)]
+pub struct Target {
+    guid: Guid,
+    name: String,
+    unit_flags: UnitFlags,
+    raid_flags: RaidFlag,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum EventType {
     SpellAuraAppliedDose,
@@ -33,6 +44,8 @@ pub enum EventType {
     SpellAbsorbedSupport,
     SpellEnergize,
     UnitDied,
+    UnitDestroyed,
+    UnitDissipates,
     SpellPeriodicHeal,
     ZoneChange,
     SpellPeriodicHealSupport,
@@ -102,6 +115,8 @@ impl TryFrom<&str> for EventType {
             "SPELL_ABSORBED_SUPPORT" => Ok(Self::SpellAbsorbedSupport),
             "SPELL_ENERGIZE" => Ok(Self::SpellEnergize),
             "UNIT_DIED" => Ok(Self::UnitDied),
+            "UNIT_DESTROYED" => Ok(Self::UnitDestroyed),
+            "UNIT_DISSIPATES" => Ok(Self::UnitDissipates),
             "SPELL_PERIODIC_HEAL" => Ok(Self::SpellPeriodicHeal),
             "ZONE_CHANGE" => Ok(Self::ZoneChange),
             "SPELL_PERIODIC_HEAL_SUPPORT" => Ok(Self::SpellPeriodicHealSupport),
@@ -173,6 +188,8 @@ impl std::fmt::Display for EventType {
             Self::SpellAbsorbedSupport => write!(f, "SPELL_ABSORBED_SUPPORT"),
             Self::SpellEnergize => write!(f, "SPELL_ENERGIZE"),
             Self::UnitDied => write!(f, "UNIT_DIED"),
+            Self::UnitDestroyed => write!(f, "UNIT_DESTROYED"),
+            Self::UnitDissipates => write!(f, "UNIT_DISSIPATES"),
             Self::SpellPeriodicHeal => write!(f, "SPELL_PERIODIC_HEAL"),
             Self::ZoneChange => write!(f, "ZONE_CHANGE"),
             Self::SpellPeriodicHealSupport => write!(f, "SPELL_PERIODIC_HEAL_SUPPORT"),
@@ -634,4 +651,273 @@ impl std::fmt::Display for Special {
 pub enum Faction {
     Horde,
     Alliance,
+}
+
+#[repr(u16)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Difficulty {
+    NormalParty = 1,
+    HeroicParty = 2,
+    MythicKeystone = 8,
+    NormalRaid = 14,
+    HeroicRaid = 15,
+    MythicRaid = 16,
+    LookingForRaid = 17,
+    MythicParty = 23,
+    TimewalkingParty = 24,
+    TimewalkingRaid = 33,
+    Pvp = 34,
+    FollowerParty = 205,
+    Delve = 208,
+    StoryRaid = 220,
+    Other(u16),
+}
+
+impl std::fmt::Display for Difficulty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NormalParty => write!(f, "Party (Normal)"),
+            Self::HeroicParty => write!(f, "Party (Heroic)"),
+            Self::MythicKeystone => write!(f, "Mythic Keystone"),
+            Self::NormalRaid => write!(f, "Raid (Normal)"),
+            Self::HeroicRaid => write!(f, "Raid (Heroic)"),
+            Self::MythicRaid => write!(f, "Raid (Mythic)"),
+            Self::LookingForRaid => write!(f, "Looking For Raid"),
+            Self::MythicParty => write!(f, "Party (Mythic)"),
+            Self::TimewalkingParty => write!(f, "Party (Timewalking)"),
+            Self::TimewalkingRaid => write!(f, "Raid (Timewalking)"),
+            Self::Pvp => write!(f, "PVP"),
+            Self::FollowerParty => write!(f, "Party (Follower)"),
+            Self::Delve => write!(f, "Delve"),
+            Self::StoryRaid => write!(f, "Raid (Story)"),
+            Self::Other(value) => write!(f, "Other (ID: {})", value),
+        }
+    }
+}
+
+impl From<u16> for Difficulty {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => Self::NormalParty,
+            2 => Self::HeroicParty,
+            8 => Self::MythicKeystone,
+            14 => Self::NormalRaid,
+            15 => Self::HeroicRaid,
+            16 => Self::MythicRaid,
+            17 => Self::LookingForRaid,
+            23 => Self::MythicParty,
+            24 => Self::TimewalkingParty,
+            33 => Self::TimewalkingRaid,
+            34 => Self::Pvp,
+            205 => Self::FollowerParty,
+            208 => Self::Delve,
+            220 => Self::StoryRaid,
+            other => Self::Other(other),
+        }
+    }
+}
+
+#[repr(u16)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Specialization {
+    BloodDeathKnight = 250,
+    FrostDeathKnight = 251,
+    UnholyDeathKnight = 252,
+    DeathKnightInitial = 1455,
+
+    HavocDemonHunter = 577,
+    VengeanceDemonHunter = 581,
+    DevourerDemonHunter = 1480,
+    DemonHunterInitial = 1456,
+
+    BalanceDruid = 102,
+    FeralDruid = 103,
+    GuardianDruid = 104,
+    RestorationDruid = 105,
+    DruidInitial = 1447,
+
+    DevastationEvoker = 1467,
+    PreservationEvoker = 1468,
+    AugmentationEvoker = 1473,
+    EvokerInitial = 1465,
+
+    BeastMasteryHunter = 253,
+    MarksmanshipHunter = 254,
+    SurvivalHunter = 255,
+    HunterInitial = 1448,
+
+    ArcaneMage = 62,
+    FireMage = 63,
+    FrostMage = 64,
+    MageInitial = 1449,
+
+    BrewmasterMonk = 268,
+    WindwalkerMonk = 269,
+    MistweaverMonk = 270,
+    MonkInitial = 1450,
+
+    HolyPaladin = 65,
+    ProtectionPaladin = 66,
+    RetributionPaladin = 70,
+    PaladinInitial = 1451,
+
+    DisciplinePriest = 256,
+    HolyPriest = 257,
+    ShadowPriest = 258,
+    PriestInitial = 1452,
+
+    AssassinationRogue = 259,
+    OutlawRogue = 260,
+    SubtletyRogue = 261,
+    RogueInitial = 1453,
+
+    ElementalShaman = 262,
+    EnhancementShaman = 263,
+    RestorationShaman = 264,
+    ShamanInitial = 1444,
+
+    AfflictionWarlock = 265,
+    DemonologyWarlock = 266,
+    DestructionWarlock = 267,
+    WarlockInitial = 1454,
+
+    ArmsWarrior = 71,
+    FuryWarrior = 72,
+    ProtectionWarrior = 73,
+    WarriorInitial = 1446,
+}
+
+impl TryFrom<u16> for Specialization {
+    type Error = Report;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            250 => Ok(Self::BloodDeathKnight),
+            251 => Ok(Self::FrostDeathKnight),
+            252 => Ok(Self::UnholyDeathKnight),
+            1455 => Ok(Self::DeathKnightInitial),
+            577 => Ok(Self::HavocDemonHunter),
+            581 => Ok(Self::VengeanceDemonHunter),
+            1480 => Ok(Self::DevourerDemonHunter),
+            1456 => Ok(Self::DemonHunterInitial),
+            102 => Ok(Self::BalanceDruid),
+            103 => Ok(Self::FeralDruid),
+            104 => Ok(Self::GuardianDruid),
+            105 => Ok(Self::RestorationDruid),
+            1447 => Ok(Self::DruidInitial),
+            1467 => Ok(Self::DevastationEvoker),
+            1468 => Ok(Self::PreservationEvoker),
+            1473 => Ok(Self::AugmentationEvoker),
+            1465 => Ok(Self::EvokerInitial),
+            253 => Ok(Self::BeastMasteryHunter),
+            254 => Ok(Self::MarksmanshipHunter),
+            255 => Ok(Self::SurvivalHunter),
+            1448 => Ok(Self::HunterInitial),
+            62 => Ok(Self::ArcaneMage),
+            63 => Ok(Self::FireMage),
+            64 => Ok(Self::FrostMage),
+            1449 => Ok(Self::MageInitial),
+            268 => Ok(Self::BrewmasterMonk),
+            269 => Ok(Self::WindwalkerMonk),
+            270 => Ok(Self::MistweaverMonk),
+            1450 => Ok(Self::MonkInitial),
+            65 => Ok(Self::HolyPaladin),
+            66 => Ok(Self::ProtectionPaladin),
+            70 => Ok(Self::RetributionPaladin),
+            1451 => Ok(Self::PaladinInitial),
+            256 => Ok(Self::DisciplinePriest),
+            257 => Ok(Self::HolyPriest),
+            258 => Ok(Self::ShadowPriest),
+            1452 => Ok(Self::PriestInitial),
+            259 => Ok(Self::AssassinationRogue),
+            260 => Ok(Self::OutlawRogue),
+            261 => Ok(Self::SubtletyRogue),
+            1453 => Ok(Self::RogueInitial),
+            262 => Ok(Self::ElementalShaman),
+            263 => Ok(Self::EnhancementShaman),
+            264 => Ok(Self::RestorationShaman),
+            1444 => Ok(Self::ShamanInitial),
+            265 => Ok(Self::AfflictionWarlock),
+            266 => Ok(Self::DemonologyWarlock),
+            267 => Ok(Self::DestructionWarlock),
+            1454 => Ok(Self::WarlockInitial),
+            71 => Ok(Self::ArmsWarrior),
+            72 => Ok(Self::FuryWarrior),
+            73 => Ok(Self::ProtectionWarrior),
+            1446 => Ok(Self::WarriorInitial),
+            other => Err(eyre!("unknown specialization id: {other}")),
+        }
+    }
+}
+
+impl std::fmt::Display for Specialization {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BloodDeathKnight => write!(f, "Blood Death Knight"),
+            Self::FrostDeathKnight => write!(f, "Frost Death Knight"),
+            Self::UnholyDeathKnight => write!(f, "Unholy Death Knight"),
+            Self::DeathKnightInitial => write!(f, "Death Knight (Initial)"),
+
+            Self::HavocDemonHunter => write!(f, "Havoc Demon Hunter"),
+            Self::VengeanceDemonHunter => write!(f, "Vengeance Demon Hunter"),
+            Self::DevourerDemonHunter => write!(f, "Devourer Demon Hunter"),
+            Self::DemonHunterInitial => write!(f, "Demon Hunter (Initial)"),
+
+            Self::BalanceDruid => write!(f, "Balance Druid"),
+            Self::FeralDruid => write!(f, "Feral Druid"),
+            Self::GuardianDruid => write!(f, "Guardian Druid"),
+            Self::RestorationDruid => write!(f, "Restoration Druid"),
+            Self::DruidInitial => write!(f, "Druid (Initial)"),
+
+            Self::DevastationEvoker => write!(f, "Devastation Evoker"),
+            Self::PreservationEvoker => write!(f, "Preservation Evoker"),
+            Self::AugmentationEvoker => write!(f, "Augmentation Evoker"),
+            Self::EvokerInitial => write!(f, "Evoker (Initial)"),
+
+            Self::BeastMasteryHunter => write!(f, "Beast Mastery Hunter"),
+            Self::MarksmanshipHunter => write!(f, "Marksmanship Hunter"),
+            Self::SurvivalHunter => write!(f, "Survival Hunter"),
+            Self::HunterInitial => write!(f, "Hunter (Initial)"),
+
+            Self::ArcaneMage => write!(f, "Arcane Mage"),
+            Self::FireMage => write!(f, "Fire Mage"),
+            Self::FrostMage => write!(f, "Frost Mage"),
+            Self::MageInitial => write!(f, "Mage (Initial)"),
+
+            Self::BrewmasterMonk => write!(f, "Brewmaster Monk"),
+            Self::WindwalkerMonk => write!(f, "Windwalker Monk"),
+            Self::MistweaverMonk => write!(f, "Mistweaver Monk"),
+            Self::MonkInitial => write!(f, "Monk Initial"),
+
+            Self::HolyPaladin => write!(f, "Holy Paladin"),
+            Self::ProtectionPaladin => write!(f, "Protection Paladin"),
+            Self::RetributionPaladin => write!(f, "Retribution Paladin"),
+            Self::PaladinInitial => write!(f, "Paladin (Initial)"),
+
+            Self::DisciplinePriest => write!(f, "Discipline Priest"),
+            Self::HolyPriest => write!(f, "Holy Priest"),
+            Self::ShadowPriest => write!(f, "Shadow Priest"),
+            Self::PriestInitial => write!(f, "Priest (Initial)"),
+
+            Self::AssassinationRogue => write!(f, "Assassination Rogue"),
+            Self::OutlawRogue => write!(f, "Outlaw Rogue"),
+            Self::SubtletyRogue => write!(f, "Subtlety Rogue"),
+            Self::RogueInitial => write!(f, "Rogue (Initial)"),
+
+            Self::ElementalShaman => write!(f, "Elemental Shaman"),
+            Self::EnhancementShaman => write!(f, "Enhancement Shaman"),
+            Self::RestorationShaman => write!(f, "Restoration Shaman"),
+            Self::ShamanInitial => write!(f, "Shaman (Initial)"),
+
+            Self::AfflictionWarlock => write!(f, "Affliction Warlock"),
+            Self::DemonologyWarlock => write!(f, "Demonology Warlock"),
+            Self::DestructionWarlock => write!(f, "Destruction Warlock"),
+            Self::WarlockInitial => write!(f, "Warlock (Initial)"),
+
+            Self::ArmsWarrior => write!(f, "Arms Warrior"),
+            Self::FuryWarrior => write!(f, "Fury Warrior"),
+            Self::ProtectionWarrior => write!(f, "Protection Warrior"),
+            Self::WarriorInitial => write!(f, "Warrior (Initial)"),
+        }
+    }
 }
