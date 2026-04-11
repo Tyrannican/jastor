@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 eyre = "0.6.12"
 jiff = "0.2.23"
+num = "0.4.3"

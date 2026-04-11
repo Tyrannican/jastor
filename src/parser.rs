@@ -1,11 +1,13 @@
-use std::io::BufRead;
+use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    Difficulty, Event, EventType, Guid, LogVersionEvent, MapChangeEvent, StaggerEvent,
-    ZoneChangeEvent,
+    Difficulty, Event, EventType, Guid, LogVersionEvent, MapChangeEvent, RaidFlag, StaggerEvent,
+    Target, UnitFlags, ZoneChangeEvent,
 };
+
 use eyre::{Context, Result, eyre};
 use jiff::{civil::DateTime, fmt::strtime};
+use num::Num;
 
 #[derive(Debug, Clone)]
 pub struct ParsedEvent {
@@ -49,6 +51,14 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::StaggerPrevented | EventType::StaggerClear => {
                 Event::Stagger(self.parse_stagger_event(event_type, args)?)
             }
+            EventType::SpellAuraApplied => {
+                let mut parser = EventArgParser::new(args, ',');
+                let src = parser.next_target()?;
+                let dst = parser.next_target()?;
+                eprintln!("SOURCE: {src:?}");
+                eprintln!("DEST: {dst:?}");
+                todo!()
+            }
             _ => todo!("not implemented yet - {event_type}"),
         };
 
@@ -60,19 +70,12 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_header(&self, args: &str) -> Result<LogVersionEvent> {
-        let args = args
-            .split(',')
-            .enumerate()
-            .filter_map(|(i, value)| if i % 2 == 0 { Some(value) } else { None })
-            .collect::<Vec<&str>>();
-
-        assert!(args.len() >= 3);
-        let version = args[0]
-            .parse::<u32>()
-            .wrap_err_with(|| format!("unable to extract combat log version: {}", args[0]))?;
-
-        let advanced_log = args[1] == "1";
-        let build = args[2].to_string();
+        let mut arg_parser = EventArgParser::new(args, ',');
+        let version = arg_parser.next_numeric::<u32>()?;
+        arg_parser.next_string()?;
+        let advanced_log = arg_parser.next_string()? == "1";
+        arg_parser.next_string()?;
+        let build = arg_parser.next_string()?;
 
         Ok(LogVersionEvent {
             version,
@@ -82,16 +85,10 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_zone_change(&self, args: &str) -> Result<ZoneChangeEvent> {
-        let args = args.split(',').collect::<Vec<&str>>();
-        assert_eq!(args.len(), 3);
-
-        let instance_id = args[0]
-            .parse::<u32>()
-            .wrap_err_with(|| format!("unable to parse instance id - {}", args[0]))?;
-        let zone_name = args[1].trim_matches('"').to_string();
-        let difficulty = args[2]
-            .parse::<u16>()
-            .wrap_err_with(|| format!("unable to parse difficulty ID - {}", args[2]))?;
+        let mut parser = EventArgParser::new(args, ',');
+        let instance_id = parser.next_numeric::<u32>()?;
+        let zone_name = parser.next_string()?;
+        let difficulty = parser.next_numeric::<u16>()?;
 
         Ok(ZoneChangeEvent {
             instance_id,
@@ -101,27 +98,13 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_map_change(&self, args: &str) -> Result<MapChangeEvent> {
-        let args = args.split(',').collect::<Vec<&str>>();
-        assert_eq!(args.len(), 6);
-
-        let map_id = args[0]
-            .parse::<u32>()
-            .wrap_err_with(|| format!("unable to parse map id: {}", args[0]))?;
-
-        let map_name = args[1].trim_matches('"').to_string();
-
-        let x0 = args[2]
-            .parse::<f32>()
-            .wrap_err_with(|| format!("unable to parse x0 value - {}", args[2]))?;
-        let x1 = args[3]
-            .parse::<f32>()
-            .wrap_err_with(|| format!("unable to parse x1 value - {}", args[3]))?;
-        let y0 = args[4]
-            .parse::<f32>()
-            .wrap_err_with(|| format!("unable to parse y0 value - {}", args[4]))?;
-        let y1 = args[5]
-            .parse::<f32>()
-            .wrap_err_with(|| format!("unable to parse y1 value - {}", args[5]))?;
+        let mut parser = EventArgParser::new(args, ',');
+        let map_id = parser.next_numeric::<u32>()?;
+        let map_name = parser.next_string()?.trim_matches('"').to_string();
+        let x0 = parser.next_numeric::<f32>()?;
+        let x1 = parser.next_numeric::<f32>()?;
+        let y0 = parser.next_numeric::<f32>()?;
+        let y1 = parser.next_numeric::<f32>()?;
 
         Ok(MapChangeEvent {
             map_id,
@@ -134,33 +117,14 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_stagger_event(&self, event_type: EventType, args: &str) -> Result<StaggerEvent> {
-        let args = args.split(',').collect::<Vec<&str>>();
-        let target_len = match event_type {
-            EventType::StaggerPrevented => 3,
-            EventType::StaggerClear => 2,
-            _ => unreachable!("impossible as only those two are passed in"),
-        };
-
-        assert_eq!(args.len(), target_len);
-
-        let guid = Guid(args[0].to_string());
+        let mut parser = EventArgParser::new(args, ',');
+        let guid = Guid(parser.next_string()?);
         let (spell_id, amount): (Option<u32>, f32) = if event_type == EventType::StaggerPrevented {
-            let spell_id =
-                Some(args[1].parse::<u32>().wrap_err_with(|| {
-                    format!("unable to parse spell id for stagger - {}", args[1])
-                })?);
-            let amount = args[2]
-                .parse::<f32>()
-                .wrap_err_with(|| format!("unable to parse stagger amount - {}", args[2]))?;
-
-            (spell_id, amount)
+            let spell_id = parser.next_numeric::<u32>()?;
+            let amount = parser.next_numeric::<f32>()?;
+            (Some(spell_id), amount)
         } else {
-            (
-                None,
-                args[1]
-                    .parse::<f32>()
-                    .wrap_err_with(|| format!("unable to parse stagger amount - {}", args[2]))?,
-            )
+            (None, parser.next_numeric::<f32>()?)
         };
 
         Ok(StaggerEvent {
@@ -186,5 +150,88 @@ impl<R: BufRead> Iterator for EventLogParser<R> {
         }
 
         Some(self.parse_event(line))
+    }
+}
+
+pub struct EventArgParser<'a> {
+    line: &'a str,
+    rest: &'a str,
+    delimiter: char,
+}
+
+impl<'a> EventArgParser<'a> {
+    pub fn new(input: &'a str, delim: char) -> Self {
+        Self {
+            line: input,
+            rest: input,
+            delimiter: delim,
+        }
+    }
+
+    pub fn next_target(&mut self) -> Result<Target> {
+        let guid = Guid(self.next_string()?);
+        let name = self.next_string()?.trim_matches('"').to_string();
+        let unit_flags = self.next_numeric::<u32>()?;
+        let raid_flags = self.next_numeric::<u32>()?;
+
+        Ok(Target {
+            guid,
+            name,
+            unit_flags: UnitFlags::new(unit_flags)?,
+            raid_flags: RaidFlag::try_from(raid_flags)?,
+        })
+    }
+
+    pub fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
+    where
+        T::Err: std::error::Error + Send + Sync + 'static,
+        <T as Num>::FromStrRadixErr: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
+    {
+        let value = self.next();
+        if value.is_empty() {
+            return Err(eyre!(
+                "expected a value, received empty string - (Source: {}, Remainder: {})",
+                self.line,
+                self.rest
+            ));
+        }
+
+        if let Some(hex) = value.strip_prefix("0x") {
+            T::from_str_radix(hex, 16)
+                .map_err(|e| eyre!("unable to convert hex value: '{}': {}", value, e))
+        } else {
+            value
+                .parse::<T>()
+                .wrap_err_with(|| format!("unable to convert value to numeric - {value}"))
+        }
+    }
+
+    pub fn next_string(&mut self) -> Result<String> {
+        let value = self.next();
+        if value.is_empty() {
+            return Err(eyre!(
+                "expected a value, received empty string - (Source: {}, Remainder: {})",
+                self.line,
+                self.rest
+            ));
+        }
+
+        Ok(value)
+    }
+
+    fn next(&mut self) -> String {
+        let mut item = String::new();
+        let mut chars = self.rest.chars();
+
+        while let Some(next) = chars.next() {
+            if next == self.delimiter {
+                break;
+            }
+
+            item.push(next);
+        }
+
+        self.rest = chars.as_str();
+        item
     }
 }

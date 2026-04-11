@@ -1,16 +1,14 @@
-use eyre::{Report, eyre};
-
-use crate::event::ArenaStartEvent;
+use eyre::{Report, Result, eyre};
 
 #[derive(Debug, Clone)]
 pub struct Guid(pub String);
 
 #[derive(Debug, Clone)]
 pub struct Target {
-    guid: Guid,
-    name: String,
-    unit_flags: UnitFlags,
-    raid_flags: RaidFlag,
+    pub guid: Guid,
+    pub name: String,
+    pub unit_flags: UnitFlags,
+    pub raid_flags: RaidFlag,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -448,7 +446,7 @@ impl std::fmt::Display for SpellSchool {
     }
 }
 
-#[repr(u8)]
+#[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum RaidFlag {
     None = 0,
@@ -460,6 +458,26 @@ pub enum RaidFlag {
     Square = 32,
     Cross = 64,
     Skull = 128,
+}
+
+impl TryFrom<u32> for RaidFlag {
+    type Error = Report;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::None),
+            1 => Ok(Self::Star),
+            2 => Ok(Self::Circle),
+            4 => Ok(Self::Diamond),
+            8 => Ok(Self::Triangle),
+            16 => Ok(Self::Moon),
+            32 => Ok(Self::Square),
+            64 => Ok(Self::Cross),
+            128 => Ok(Self::Skull),
+            0x80000000 => Ok(Self::None),
+            _ => Err(eyre!("invalid raid flag value: {value}")),
+        }
+    }
 }
 
 impl std::fmt::Display for RaidFlag {
@@ -488,7 +506,7 @@ pub struct UnitFlags {
 }
 
 impl UnitFlags {
-    pub fn new(flag: u32) -> Result<Self, &'static str> {
+    pub fn new(flag: u32) -> Result<Self> {
         Ok(Self {
             affiliation: Affiliation::try_from(flag & 0xF)?,
             reaction: Reaction::try_from(flag & 0xF0)?,
@@ -519,7 +537,7 @@ enum Affiliation {
 }
 
 impl TryFrom<u32> for Affiliation {
-    type Error = &'static str;
+    type Error = Report;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
@@ -527,7 +545,7 @@ impl TryFrom<u32> for Affiliation {
             0x2 => Ok(Self::Party),
             0x4 => Ok(Self::Raid),
             0x8 => Ok(Self::Outsider),
-            _ => Err("invalid unit affiliation"),
+            _ => Err(eyre!("invalid unit affiliation")),
         }
     }
 }
@@ -552,14 +570,14 @@ enum Reaction {
 }
 
 impl TryFrom<u32> for Reaction {
-    type Error = &'static str;
+    type Error = Report;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
             0x10 => Ok(Self::Friendly),
             0x20 => Ok(Self::Neutral),
             0x40 => Ok(Self::Hostile),
-            _ => Err("invalid unit reaction"),
+            _ => Err(eyre!("invalid unit reaction")),
         }
     }
 }
@@ -582,13 +600,13 @@ enum Controller {
 }
 
 impl TryFrom<u32> for Controller {
-    type Error = &'static str;
+    type Error = Report;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
             0x100 => Ok(Self::Player),
             0x200 => Ok(Self::Npc),
-            _ => Err("invalid unit controller"),
+            _ => Err(eyre!("invalid unit controller")),
         }
     }
 }
@@ -613,7 +631,7 @@ enum Classification {
 }
 
 impl TryFrom<u32> for Classification {
-    type Error = &'static str;
+    type Error = Report;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
@@ -622,7 +640,7 @@ impl TryFrom<u32> for Classification {
             0x1000 => Ok(Self::Pet),
             0x2000 => Ok(Self::Guardian),
             0x4000 => Ok(Self::Other),
-            _ => Err("invalid unit classification"),
+            _ => Err(eyre!("invalid unit classification")),
         }
     }
 }
@@ -650,7 +668,7 @@ enum Special {
 }
 
 impl TryFrom<u32> for Special {
-    type Error = &'static str;
+    type Error = Report;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
@@ -658,8 +676,8 @@ impl TryFrom<u32> for Special {
             0x20000 => Ok(Self::Focus),
             0x40000 => Ok(Self::MainTank),
             0x80000 => Ok(Self::MainAssist),
-            0x80000000 => Ok(Self::None),
-            _ => Err("invalid unit special flag"),
+            0x0 | 0x80000000 => Ok(Self::None),
+            other => Err(eyre!("invalid unit special flag - {other}")),
         }
     }
 }
