@@ -406,6 +406,49 @@ pub enum SpellSchool {
     Chaos = 127,
 }
 
+impl TryFrom<u8> for SpellSchool {
+    type Error = Report;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Physical),
+            2 => Ok(Self::Holy),
+            3 => Ok(Self::HolyStrike),
+            4 => Ok(Self::Fire),
+            5 => Ok(Self::Flamestrike),
+            6 => Ok(Self::Radiant),
+            8 => Ok(Self::Nature),
+            9 => Ok(Self::Stormstrike),
+            10 => Ok(Self::Holystorm),
+            12 => Ok(Self::Volcanic),
+            16 => Ok(Self::Frost),
+            17 => Ok(Self::Froststrike),
+            18 => Ok(Self::Holyfrost),
+            20 => Ok(Self::Frostfire),
+            24 => Ok(Self::Froststorm),
+            28 => Ok(Self::Elemental),
+            32 => Ok(Self::Shadow),
+            33 => Ok(Self::Shadowstrike),
+            34 => Ok(Self::Twilight),
+            36 => Ok(Self::Shadowflame),
+            40 => Ok(Self::Plague),
+            48 => Ok(Self::Shadowfrost),
+            62 => Ok(Self::Chromatic),
+            64 => Ok(Self::Arcane),
+            65 => Ok(Self::Spellstrike),
+            66 => Ok(Self::Divine),
+            68 => Ok(Self::Spellfire),
+            72 => Ok(Self::Astral),
+            80 => Ok(Self::Spellfrost),
+            96 => Ok(Self::Spellshadow),
+            106 => Ok(Self::Cosmic),
+            126 => Ok(Self::Magic),
+            127 => Ok(Self::Chaos),
+            _ => Err(eyre!("invalid spell school id - {value}")),
+        }
+    }
+}
+
 impl std::fmt::Display for SpellSchool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

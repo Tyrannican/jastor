@@ -38,8 +38,8 @@ pub struct CombatEvent {
     src: Option<Target>,
     dst: Option<Target>,
     spell: Option<SpellParameters>,
-    environmental: Option<EnvironmentalType>,
     adv: Option<AdvancedParameters>,
+    environmental: Option<EnvironmentalType>,
     suffix: Option<Suffix>,
 }
 
@@ -51,29 +51,30 @@ pub struct BaseParameters {
 
 #[derive(Debug, Clone)]
 pub struct SpellParameters {
-    spell_id: u32,
-    spell_name: String,
-    school: SpellSchool,
+    pub spell_id: u32,
+    pub spell_name: String,
+    pub school: SpellSchool,
 }
 
 #[derive(Debug, Clone)]
 pub struct AdvancedParameters {
-    info: Guid,
-    owner: Guid,
-    current_hp: u32,
-    max_hp: u32,
-    attack_power: u32,
-    spell_power: u32,
-    armor: u32,
-    absorb: u32,
-    power_type: PowerType,
-    current_power: u32,
-    max_power: u32,
-    x: f32,
-    y: f32,
-    map_id: u32,
-    facing: f32,
-    level: u32,
+    pub info: Guid,
+    pub owner: Guid,
+    pub current_hp: u32,
+    pub max_hp: u32,
+    pub attack_power: u32,
+    pub spell_power: u32,
+    pub armor: u32,
+    pub absorb: u32,
+    pub power_type: PowerType,
+    pub current_power: u32,
+    pub max_power: u32,
+    pub power_cost: u32,
+    pub x: f32,
+    pub y: f32,
+    pub map_id: u32,
+    pub facing: f32,
+    pub level: u32,
 }
 
 #[derive(Debug, Clone)]

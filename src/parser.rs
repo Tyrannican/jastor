@@ -1,8 +1,9 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    Difficulty, Event, EventType, Guid, LogVersionEvent, MapChangeEvent, RaidFlag, StaggerEvent,
-    Target, UnitFlags, ZoneChangeEvent,
+    AdvancedParameters, Difficulty, Event, EventType, Guid, LogVersionEvent, MapChangeEvent,
+    PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, Target, UnitFlags,
+    ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -55,8 +56,12 @@ impl<R: BufRead> EventLogParser<R> {
                 let mut parser = EventArgParser::new(args, ',');
                 let src = parser.next_target()?;
                 let dst = parser.next_target()?;
-                eprintln!("SOURCE: {src:?}");
-                eprintln!("DEST: {dst:?}");
+                let spell_parameters = if event_type.has_spell_parameters() {
+                    Some(parser.next_spell_parameters()?)
+                } else {
+                    None
+                };
+
                 todo!()
             }
             _ => todo!("not implemented yet - {event_type}"),
@@ -87,7 +92,7 @@ impl<R: BufRead> EventLogParser<R> {
     fn parse_zone_change(&self, args: &str) -> Result<ZoneChangeEvent> {
         let mut parser = EventArgParser::new(args, ',');
         let instance_id = parser.next_numeric::<u32>()?;
-        let zone_name = parser.next_string()?;
+        let zone_name = parser.next_string()?.trim_matches('"').to_string();
         let difficulty = parser.next_numeric::<u16>()?;
 
         Ok(ZoneChangeEvent {
@@ -179,6 +184,58 @@ impl<'a> EventArgParser<'a> {
             name,
             unit_flags: UnitFlags::new(unit_flags)?,
             raid_flags: RaidFlag::try_from(raid_flags)?,
+        })
+    }
+
+    pub fn next_spell_parameters(&mut self) -> Result<SpellParameters> {
+        let spell_id = self.next_numeric::<u32>()?;
+        let spell_name = self.next_string()?.trim_matches('"').to_string();
+        let spell_school = SpellSchool::try_from(self.next_numeric::<u8>()?)?;
+
+        Ok(SpellParameters {
+            spell_id,
+            spell_name,
+            school: spell_school,
+        })
+    }
+
+    pub fn next_advanced_parameters(&mut self) -> Result<AdvancedParameters> {
+        let info = Guid(self.next_string()?);
+        let owner = Guid(self.next_string()?);
+        let current_hp = self.next_numeric::<u32>()?;
+        let max_hp = self.next_numeric::<u32>()?;
+        let attack_power = self.next_numeric::<u32>()?;
+        let spell_power = self.next_numeric::<u32>()?;
+        let armor = self.next_numeric::<u32>()?;
+        let absorb = self.next_numeric::<u32>()?;
+        // TODO: Power type - impl TryFrom
+        let current_power = self.next_numeric::<u32>()?;
+        let max_power = self.next_numeric::<u32>()?;
+        let power_cost = self.next_numeric::<u32>()?;
+        let x = self.next_numeric::<f32>()?;
+        let y = self.next_numeric::<f32>()?;
+        let map_id = self.next_numeric::<u32>()?;
+        let facing = self.next_numeric::<f32>()?;
+        let level = self.next_numeric::<u32>()?;
+
+        Ok(AdvancedParameters {
+            info,
+            owner,
+            current_hp,
+            max_hp,
+            attack_power,
+            spell_power,
+            armor,
+            absorb,
+            power_type: PowerType::Mana,
+            current_power,
+            max_power,
+            power_cost,
+            x,
+            y,
+            map_id,
+            facing,
+            level,
         })
     }
 
