@@ -22,6 +22,7 @@ pub enum Event {
     WorldMarkerRemoved(RaidFlag),
     ZoneChange(ZoneChangeEvent),
     MapChange(MapChangeEvent),
+    Placeholder,
 }
 
 #[derive(Debug, Clone)]
@@ -33,14 +34,12 @@ pub struct LogVersionEvent {
 
 #[derive(Debug, Clone)]
 pub struct CombatEvent {
-    timestamp: DateTime,
-    event_type: EventType,
-    src: Option<Target>,
-    dst: Option<Target>,
-    spell: Option<SpellParameters>,
-    adv: Option<AdvancedParameters>,
-    environmental: Option<EnvironmentalType>,
-    suffix: Option<Suffix>,
+    pub src: Option<Target>,
+    pub dst: Option<Target>,
+    pub spell: Option<SpellParameters>,
+    pub adv: Option<AdvancedParameters>,
+    pub environmental: Option<EnvironmentalType>,
+    pub suffix: Option<Suffix>,
 }
 
 #[derive(Debug, Clone)]
@@ -173,8 +172,8 @@ pub struct StealWithAuraEvent {
 
 #[derive(Debug, Clone)]
 pub struct AuraEvent {
-    aura: AuraType,
-    amount: u32,
+    pub aura: AuraType,
+    pub amount: u32,
 }
 
 #[derive(Debug, Clone)]

@@ -105,6 +105,17 @@ impl EventType {
             _ => true,
         }
     }
+
+    pub fn has_advanced_parameters(&self) -> bool {
+        match self {
+            Self::SpellAuraAppliedDose
+            | Self::SpellAuraRemoved
+            | Self::SpellAuraApplied
+            | Self::SpellAuraRemovedDose
+            | Self::SpellAuraRefresh => false,
+            _ => true,
+        }
+    }
 }
 
 impl TryFrom<&str> for EventType {
@@ -366,6 +377,46 @@ pub enum PowerType {
     Happiness,
     ShadowOrbs,
     RuneChromatic,
+}
+
+impl TryFrom<u8> for PowerType {
+    type Error = Report;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Mana),
+            1 => Ok(Self::Rage),
+            2 => Ok(Self::Focus),
+            3 => Ok(Self::Energy),
+            4 => Ok(Self::ComboPoints),
+            5 => Ok(Self::Runes),
+            6 => Ok(Self::RunicPower),
+            7 => Ok(Self::SoulShards),
+            8 => Ok(Self::LunarPower),
+            9 => Ok(Self::HolyPower),
+            10 => Ok(Self::Alternate),
+            11 => Ok(Self::Maelstrom),
+            12 => Ok(Self::Chi),
+            13 => Ok(Self::Insanity),
+            14 => Ok(Self::BurningEmbers),
+            15 => Ok(Self::DemonicFury),
+            16 => Ok(Self::ArcaneCharges),
+            17 => Ok(Self::Fury),
+            18 => Ok(Self::Pain),
+            19 => Ok(Self::Essence),
+            20 => Ok(Self::RuneBlood),
+            21 => Ok(Self::RuneFrost),
+            22 => Ok(Self::RuneUnholy),
+            23 => Ok(Self::AlternateQuest),
+            24 => Ok(Self::AlternateEncounte),
+            25 => Ok(Self::AlternateMount),
+            26 => Ok(Self::Balance),
+            27 => Ok(Self::Happiness),
+            28 => Ok(Self::ShadowOrbs),
+            29 => Ok(Self::RuneChromatic),
+            _ => Err(eyre!("invalid value for power type - {value}")),
+        }
+    }
 }
 
 #[repr(u8)]

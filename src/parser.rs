@@ -1,9 +1,9 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, Difficulty, Event, EventType, Guid, LogVersionEvent, MapChangeEvent,
-    PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, Target, UnitFlags,
-    ZoneChangeEvent,
+    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Difficulty, EnvironmentalType, Event,
+    EventType, Guid, LogVersionEvent, MapChangeEvent, PowerType, RaidFlag, SpellParameters,
+    SpellSchool, StaggerEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -52,19 +52,8 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::StaggerPrevented | EventType::StaggerClear => {
                 Event::Stagger(self.parse_stagger_event(event_type, args)?)
             }
-            EventType::SpellAuraApplied => {
-                let mut parser = EventArgParser::new(args, ',');
-                let src = parser.next_target()?;
-                let dst = parser.next_target()?;
-                let spell_parameters = if event_type.has_spell_parameters() {
-                    Some(parser.next_spell_parameters()?)
-                } else {
-                    None
-                };
-
-                todo!()
-            }
-            _ => todo!("not implemented yet - {event_type}"),
+            EventType::SpellEnergize => Event::Combat(self.parse_combat_event(event_type, args)?),
+            _ => todo!("not implemented yet - {event_type} ({args})"),
         };
 
         Ok(ParsedEvent {
@@ -138,6 +127,35 @@ impl<R: BufRead> EventLogParser<R> {
             amount,
         })
     }
+
+    fn parse_combat_event(&self, event_type: EventType, args: &str) -> Result<CombatEvent> {
+        let mut parser = EventArgParser::new(args, ',');
+        let src = parser.target()?;
+        let dst = parser.target()?;
+        let spell_parameters = if event_type.has_spell_parameters() {
+            Some(parser.spell_parameters()?)
+        } else {
+            None
+        };
+
+        let adv = if event_type.has_advanced_parameters() {
+            Some(parser.advanced_parameters()?)
+        } else {
+            None
+        };
+
+        let environmental = None;
+        let suffix = None;
+
+        Ok(CombatEvent {
+            src: Some(src),
+            dst: Some(dst),
+            spell: spell_parameters,
+            adv,
+            environmental,
+            suffix,
+        })
+    }
 }
 
 impl<R: BufRead> Iterator for EventLogParser<R> {
@@ -173,7 +191,7 @@ impl<'a> EventArgParser<'a> {
         }
     }
 
-    pub fn next_target(&mut self) -> Result<Target> {
+    pub fn target(&mut self) -> Result<Target> {
         let guid = Guid(self.next_string()?);
         let name = self.next_string()?.trim_matches('"').to_string();
         let unit_flags = self.next_numeric::<u32>()?;
@@ -187,7 +205,7 @@ impl<'a> EventArgParser<'a> {
         })
     }
 
-    pub fn next_spell_parameters(&mut self) -> Result<SpellParameters> {
+    pub fn spell_parameters(&mut self) -> Result<SpellParameters> {
         let spell_id = self.next_numeric::<u32>()?;
         let spell_name = self.next_string()?.trim_matches('"').to_string();
         let spell_school = SpellSchool::try_from(self.next_numeric::<u8>()?)?;
@@ -199,7 +217,35 @@ impl<'a> EventArgParser<'a> {
         })
     }
 
-    pub fn next_advanced_parameters(&mut self) -> Result<AdvancedParameters> {
+    pub fn advanced_parameters(&mut self) -> Result<AdvancedParameters> {
+        // Advanced Parameters
+        //
+        // Player-1084-0B0A5CBB, -- Info
+        // 0000000000000000, -- Owner
+        // 275380, -- Current HP
+        // 275380, -- Max HP
+        // 1947, -- Attack Power
+        // 662, -- Spell Power,
+        // 1374, -- Armor
+        // 588, -- Absorb
+        // 0, -- (?)
+        // 0, -- (?)
+        // 0, -- Power Type
+        // 242766, -- Current Power
+        // 250000, -- Max Power
+        // 0, -- Power Cost
+        // 4081.65, -- X
+        // 1091.20, -- Y
+        // 2530, -- Map ID
+        // 5.6472, -- Facing
+        // 222, -- Item Level
+        //
+        // Energize Params
+        //
+        // 1.0000, -- Amount
+        // 0.0000, -- Over Energize
+        // 9, -- Power Type
+        // 5 -- Max Power
         let info = Guid(self.next_string()?);
         let owner = Guid(self.next_string()?);
         let current_hp = self.next_numeric::<u32>()?;
@@ -208,7 +254,7 @@ impl<'a> EventArgParser<'a> {
         let spell_power = self.next_numeric::<u32>()?;
         let armor = self.next_numeric::<u32>()?;
         let absorb = self.next_numeric::<u32>()?;
-        // TODO: Power type - impl TryFrom
+        let power_type = PowerType::try_from(self.next_numeric::<u8>()?)?;
         let current_power = self.next_numeric::<u32>()?;
         let max_power = self.next_numeric::<u32>()?;
         let power_cost = self.next_numeric::<u32>()?;
@@ -227,7 +273,7 @@ impl<'a> EventArgParser<'a> {
             spell_power,
             armor,
             absorb,
-            power_type: PowerType::Mana,
+            power_type,
             current_power,
             max_power,
             power_cost,
@@ -237,6 +283,21 @@ impl<'a> EventArgParser<'a> {
             facing,
             level,
         })
+    }
+
+    pub fn aura(&mut self, ignore_amount: bool) -> Result<(AuraType, u32)> {
+        let aura = AuraType::try_from(self.next_string()?.as_str())?;
+        let amount = if !ignore_amount {
+            self.next_numeric::<u32>()?
+        } else {
+            0
+        };
+
+        Ok((aura, amount))
+    }
+
+    pub fn environmental(&mut self) -> Result<EnvironmentalType> {
+        EnvironmentalType::try_from(self.next_string()?.as_str())
     }
 
     pub fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
@@ -257,9 +318,12 @@ impl<'a> EventArgParser<'a> {
             T::from_str_radix(hex, 16)
                 .map_err(|e| eyre!("unable to convert hex value: '{}': {}", value, e))
         } else {
-            value
-                .parse::<T>()
-                .wrap_err_with(|| format!("unable to convert value to numeric - {value}"))
+            value.parse::<T>().wrap_err_with(|| {
+                format!(
+                    "unable to convert value to numeric - {value} ({})",
+                    self.line
+                )
+            })
         }
     }
 
