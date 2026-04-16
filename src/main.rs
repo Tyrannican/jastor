@@ -8,7 +8,7 @@ fn main() -> eyre::Result<()> {
     let reader = BufReader::new(f);
     let parser = EventLogParser::new(reader);
     for event in parser.into_iter() {
-        eprintln!("{:?}", event?);
+        eprintln!("{:?}\n", event?);
     }
     // let paths = std::fs::read_dir("./logs")?;
     // for path in paths {

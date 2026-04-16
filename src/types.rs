@@ -101,7 +101,8 @@ impl EventType {
             | Self::StaggerClear
             | Self::UnitDied
             | Self::UnitDestroyed
-            | Self::UnitDissipates => false,
+            | Self::UnitDissipates
+            | Self::SwingDamage => false,
             _ => true,
         }
     }

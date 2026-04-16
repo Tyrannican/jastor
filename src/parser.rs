@@ -1,8 +1,8 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Difficulty, EnvironmentalType, Event,
-    EventType, Guid, LogVersionEvent, MapChangeEvent, PowerType, RaidFlag, SpellParameters,
+    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty, EnvironmentalType,
+    Event, EventType, Guid, LogVersionEvent, MapChangeEvent, PowerType, RaidFlag, SpellParameters,
     SpellSchool, StaggerEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
 };
 
@@ -52,8 +52,12 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::StaggerPrevented | EventType::StaggerClear => {
                 Event::Stagger(self.parse_stagger_event(event_type, args)?)
             }
-            EventType::SpellEnergize => Event::Combat(self.parse_combat_event(event_type, args)?),
-            _ => todo!("not implemented yet - {event_type} ({args})"),
+            EventType::CombatantInfo => todo!(),
+            EventType::SwingDamage => Event::Combat(self.parse_combat_event(event_type, args)?),
+            _ => Event::Combat(
+                self.parse_combat_event(event_type, args)
+                    .context(format!("processing {} event", event_type))?,
+            ),
         };
 
         Ok(ParsedEvent {
@@ -218,34 +222,6 @@ impl<'a> EventArgParser<'a> {
     }
 
     pub fn advanced_parameters(&mut self) -> Result<AdvancedParameters> {
-        // Advanced Parameters
-        //
-        // Player-1084-0B0A5CBB, -- Info
-        // 0000000000000000, -- Owner
-        // 275380, -- Current HP
-        // 275380, -- Max HP
-        // 1947, -- Attack Power
-        // 662, -- Spell Power,
-        // 1374, -- Armor
-        // 588, -- Absorb
-        // 0, -- (?)
-        // 0, -- (?)
-        // 0, -- Power Type
-        // 242766, -- Current Power
-        // 250000, -- Max Power
-        // 0, -- Power Cost
-        // 4081.65, -- X
-        // 1091.20, -- Y
-        // 2530, -- Map ID
-        // 5.6472, -- Facing
-        // 222, -- Item Level
-        //
-        // Energize Params
-        //
-        // 1.0000, -- Amount
-        // 0.0000, -- Over Energize
-        // 9, -- Power Type
-        // 5 -- Max Power
         let info = Guid(self.next_string()?);
         let owner = Guid(self.next_string()?);
         let current_hp = self.next_numeric::<u32>()?;
@@ -253,6 +229,11 @@ impl<'a> EventArgParser<'a> {
         let attack_power = self.next_numeric::<u32>()?;
         let spell_power = self.next_numeric::<u32>()?;
         let armor = self.next_numeric::<u32>()?;
+
+        // No idea what these are -- clarify
+        let _ = self.next_numeric::<u32>()?;
+        let _ = self.next_numeric::<u32>()?;
+
         let absorb = self.next_numeric::<u32>()?;
         let power_type = PowerType::try_from(self.next_numeric::<u8>()?)?;
         let current_power = self.next_numeric::<u32>()?;

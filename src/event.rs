@@ -63,6 +63,7 @@ pub struct AdvancedParameters {
     pub max_hp: u32,
     pub attack_power: u32,
     pub spell_power: u32,
+    // TODO: Determine what the missing two events are
     pub armor: u32,
     pub absorb: u32,
     pub power_type: PowerType,
