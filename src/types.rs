@@ -113,7 +113,11 @@ impl EventType {
             | Self::SpellAuraRemoved
             | Self::SpellAuraApplied
             | Self::SpellAuraRemovedDose
-            | Self::SpellAuraRefresh => false,
+            | Self::SpellAuraRefresh
+            | Self::SpellPeriodicMissed
+            | Self::SpellCastStart
+            | Self::SpellMissed
+            | Self::SpellAbsorbed => false,
             _ => true,
         }
     }
@@ -629,6 +633,7 @@ enum Affiliation {
     Party = 0x2,
     Raid = 0x4,
     Outsider = 0x8,
+    None,
 }
 
 impl TryFrom<u32> for Affiliation {
@@ -640,7 +645,7 @@ impl TryFrom<u32> for Affiliation {
             0x2 => Ok(Self::Party),
             0x4 => Ok(Self::Raid),
             0x8 => Ok(Self::Outsider),
-            _ => Err(eyre!("invalid unit affiliation")),
+            _ => Ok(Self::None),
         }
     }
 }
@@ -652,6 +657,7 @@ impl std::fmt::Display for Affiliation {
             Self::Party => write!(f, "Party"),
             Self::Raid => write!(f, "Raid"),
             Self::Outsider => write!(f, "Outsider"),
+            Self::None => write!(f, "None"),
         }
     }
 }
@@ -662,6 +668,7 @@ enum Reaction {
     Friendly = 0x10,
     Hostile = 0x40,
     Neutral = 0x20,
+    None,
 }
 
 impl TryFrom<u32> for Reaction {
@@ -672,7 +679,7 @@ impl TryFrom<u32> for Reaction {
             0x10 => Ok(Self::Friendly),
             0x20 => Ok(Self::Neutral),
             0x40 => Ok(Self::Hostile),
-            _ => Err(eyre!("invalid unit reaction")),
+            _ => Ok(Self::None),
         }
     }
 }
@@ -683,6 +690,7 @@ impl std::fmt::Display for Reaction {
             Self::Friendly => write!(f, "Friendly"),
             Self::Hostile => write!(f, "Hostile"),
             Self::Neutral => write!(f, "Neutral"),
+            Self::None => write!(f, "None"),
         }
     }
 }
@@ -692,6 +700,7 @@ impl std::fmt::Display for Reaction {
 enum Controller {
     Player = 0x100,
     Npc = 0x200,
+    None,
 }
 
 impl TryFrom<u32> for Controller {
@@ -701,7 +710,8 @@ impl TryFrom<u32> for Controller {
         match value {
             0x100 => Ok(Self::Player),
             0x200 => Ok(Self::Npc),
-            _ => Err(eyre!("invalid unit controller")),
+            _ => Ok(Self::None),
+            // _ => Err(eyre!("invalid unit controller - {value}")),
         }
     }
 }
@@ -711,6 +721,7 @@ impl std::fmt::Display for Controller {
         match self {
             Self::Player => write!(f, "Player"),
             Self::Npc => write!(f, "Npc"),
+            Self::None => write!(f, "None"),
         }
     }
 }
@@ -723,6 +734,7 @@ enum Classification {
     Pet = 0x1000,
     Guardian = 0x2000,
     Other = 0x4000,
+    None,
 }
 
 impl TryFrom<u32> for Classification {
@@ -735,7 +747,8 @@ impl TryFrom<u32> for Classification {
             0x1000 => Ok(Self::Pet),
             0x2000 => Ok(Self::Guardian),
             0x4000 => Ok(Self::Other),
-            _ => Err(eyre!("invalid unit classification")),
+            _ => Ok(Self::None),
+            // _ => Err(eyre!("invalid unit classification")),
         }
     }
 }
@@ -748,6 +761,7 @@ impl std::fmt::Display for Classification {
             Self::Pet => write!(f, "Pet"),
             Self::Guardian => write!(f, "Guardian"),
             Self::Other => write!(f, "Other"),
+            Self::None => write!(f, "None"),
         }
     }
 }

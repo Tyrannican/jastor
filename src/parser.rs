@@ -133,10 +133,14 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_combat_event(&self, event_type: EventType, args: &str) -> Result<CombatEvent> {
+        eprintln!("ARGS: {args}");
         let mut parser = EventArgParser::new(args, ',');
         let src = parser.target()?;
         let dst = parser.target()?;
-        let spell_parameters = if event_type.has_spell_parameters() {
+
+        let spell_parameters = if event_type == EventType::SpellAbsorbed {
+            parser.spell_parameters().ok()
+        } else if event_type.has_spell_parameters() {
             Some(parser.spell_parameters()?)
         } else {
             None
