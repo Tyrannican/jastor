@@ -133,7 +133,7 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_combat_event(&self, event_type: EventType, args: &str) -> Result<CombatEvent> {
-        eprintln!("ARGS: {args}");
+        eprintln!("EVENT: {event_type} ARGS: {args}");
         let mut parser = EventArgParser::new(args, ',');
         let src = parser.target()?;
         let dst = parser.target()?;
@@ -239,10 +239,14 @@ impl<'a> EventArgParser<'a> {
         let _ = self.next_numeric::<u32>()?;
 
         let absorb = self.next_numeric::<u32>()?;
+
+        // TODO: Multiple Values are delimited by a `|` character
+        // Need to change these to Vec<T>
         let power_type = PowerType::try_from(self.next_numeric::<u8>()?)?;
         let current_power = self.next_numeric::<u32>()?;
         let max_power = self.next_numeric::<u32>()?;
         let power_cost = self.next_numeric::<u32>()?;
+
         let x = self.next_numeric::<f32>()?;
         let y = self.next_numeric::<f32>()?;
         let map_id = self.next_numeric::<u32>()?;
@@ -330,11 +334,20 @@ impl<'a> EventArgParser<'a> {
         let mut chars = self.rest.chars();
 
         while let Some(next) = chars.next() {
-            if next == self.delimiter {
-                break;
+            match next {
+                '"' => {
+                    while let Some(inner) = chars.next() {
+                        match inner {
+                            '"' => break,
+                            ch => item.push(ch),
+                        }
+                    }
+                }
+                ch if ch == self.delimiter => {
+                    break;
+                }
+                ch => item.push(ch),
             }
-
-            item.push(next);
         }
 
         self.rest = chars.as_str();

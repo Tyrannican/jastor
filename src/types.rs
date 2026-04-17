@@ -102,6 +102,8 @@ impl EventType {
             | Self::UnitDied
             | Self::UnitDestroyed
             | Self::UnitDissipates
+            | Self::SwingDamageLanded
+            | Self::SwingMissed
             | Self::SwingDamage => false,
             _ => true,
         }
@@ -117,6 +119,9 @@ impl EventType {
             | Self::SpellPeriodicMissed
             | Self::SpellCastStart
             | Self::SpellMissed
+            | Self::SpellHealAbsorbed
+            | Self::SwingMissed
+            | Self::SpellExtraAttacks
             | Self::SpellAbsorbed => false,
             _ => true,
         }
@@ -497,7 +502,7 @@ impl TryFrom<u8> for SpellSchool {
             72 => Ok(Self::Astral),
             80 => Ok(Self::Spellfrost),
             96 => Ok(Self::Spellshadow),
-            106 => Ok(Self::Cosmic),
+            106 | 110 => Ok(Self::Cosmic),
             126 => Ok(Self::Magic),
             127 => Ok(Self::Chaos),
             _ => Err(eyre!("invalid spell school id - {value}")),
