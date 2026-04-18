@@ -1,10 +1,8 @@
-use jiff::civil::DateTime;
-
 pub use crate::{
     player::Combatant,
     types::{
-        AuraType, Difficulty, EnvironmentalType, EventType, Guid, MissType, PowerType, RaidFlag,
-        SpellSchool, Target, UnitFlags,
+        AuraType, Difficulty, EnvironmentalType, EventType, Guid, MissType, MultiValue, PowerType,
+        RaidFlag, SpellSchool, Target, UnitFlags,
     },
 };
 
@@ -66,10 +64,12 @@ pub struct AdvancedParameters {
     // TODO: Determine what the missing two events are
     pub armor: u32,
     pub absorb: u32,
-    pub power_type: PowerType,
-    pub current_power: u32,
-    pub max_power: u32,
-    pub power_cost: u32,
+
+    pub power_type: MultiValue<PowerType>,
+    pub current_power: MultiValue<u32>,
+    pub max_power: MultiValue<u32>,
+    pub power_cost: MultiValue<u32>,
+
     pub x: f32,
     pub y: f32,
     pub map_id: u32,
@@ -192,11 +192,11 @@ pub struct EnchantEvent {
 
 #[derive(Debug, Clone)]
 pub struct EncounterStartEvent {
-    encounter_id: u32,
-    encounter_name: String,
-    difficulty: Difficulty,
-    group_size: u32,
-    instance_id: u32,
+    pub encounter_id: u32,
+    pub encounter_name: String,
+    pub difficulty: Difficulty,
+    pub group_size: u32,
+    pub instance_id: u32,
 }
 
 #[derive(Debug, Clone)]

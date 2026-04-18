@@ -102,6 +102,7 @@ impl EventType {
             | Self::UnitDied
             | Self::UnitDestroyed
             | Self::UnitDissipates
+            | Self::PartyKill
             | Self::SwingDamageLanded
             | Self::SwingMissed
             | Self::SwingDamage => false,
@@ -122,6 +123,14 @@ impl EventType {
             | Self::SpellHealAbsorbed
             | Self::SwingMissed
             | Self::SpellExtraAttacks
+            | Self::SpellSummon
+            | Self::UnitDied
+            | Self::PartyKill
+            | Self::SpellCastFailed
+            | Self::SpellInterrupt
+            | Self::SpellDispel
+            | Self::SpellCreate
+            | Self::SpellAuraBrokenSpell
             | Self::SpellAbsorbed => false,
             _ => true,
         }
@@ -504,8 +513,9 @@ impl TryFrom<u8> for SpellSchool {
             96 => Ok(Self::Spellshadow),
             106 | 110 => Ok(Self::Cosmic),
             126 => Ok(Self::Magic),
-            127 => Ok(Self::Chaos),
-            _ => Err(eyre!("invalid spell school id - {value}")),
+            124 | 127 => Ok(Self::Chaos),
+            _ => Ok(Self::Physical),
+            // _ => Err(eyre!("invalid spell school id - {value}")),
         }
     }
 }
@@ -1080,6 +1090,40 @@ impl std::fmt::Display for Specialization {
             Self::FuryWarrior => write!(f, "Fury Warrior"),
             Self::ProtectionWarrior => write!(f, "Protection Warrior"),
             Self::WarriorInitial => write!(f, "Warrior (Initial)"),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct MultiValue<T>(pub Vec<T>);
+
+impl<T> std::ops::Deref for MultiValue<T> {
+    type Target = Vec<T>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::fmt::Debug for MultiValue<T>
+where
+    T: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0.len() {
+            0 => return Ok(()),
+            1 => write!(f, "{:?}", self.0[0]),
+            len => {
+                let last = len - 1;
+                write!(f, "(")?;
+                for (i, entry) in self.0.iter().enumerate() {
+                    write!(f, "{:?}", entry)?;
+                    if i != last {
+                        write!(f, ",")?;
+                    }
+                }
+
+                write!(f, ")")
+            }
         }
     }
 }

@@ -1,9 +1,10 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty, EnvironmentalType,
-    Event, EventType, Guid, LogVersionEvent, MapChangeEvent, PowerType, RaidFlag, SpellParameters,
-    SpellSchool, StaggerEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
+    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty,
+    EncounterStartEvent, EnvironmentalType, Event, EventType, Guid, LogVersionEvent,
+    MapChangeEvent, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent,
+    Suffix, Target, UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -49,10 +50,11 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::CombatLogVersion => Event::LogVersion(self.parse_header(args)?),
             EventType::ZoneChange => Event::ZoneChange(self.parse_zone_change(args)?),
             EventType::MapChange => Event::MapChange(self.parse_map_change(args)?),
+            EventType::EncounterStart => Event::EncounterStart(self.parse_encounter_start(args)?),
             EventType::StaggerPrevented | EventType::StaggerClear => {
                 Event::Stagger(self.parse_stagger_event(event_type, args)?)
             }
-            EventType::CombatantInfo => todo!(),
+            EventType::CombatantInfo => todo!("combatant info needs done"),
             EventType::SwingDamage => Event::Combat(self.parse_combat_event(event_type, args)?),
             _ => Event::Combat(
                 self.parse_combat_event(event_type, args)
@@ -111,6 +113,23 @@ impl<R: BufRead> EventLogParser<R> {
             x1,
             y0,
             y1,
+        })
+    }
+
+    fn parse_encounter_start(&self, args: &str) -> Result<EncounterStartEvent> {
+        let mut parser = EventArgParser::new(args, ',');
+        let encounter_id = parser.next_numeric::<u32>()?;
+        let encounter_name = parser.next_string()?;
+        let difficulty = Difficulty::from(parser.next_numeric::<u16>()?);
+        let group_size = parser.next_numeric::<u32>()?;
+        let instance_id = parser.next_numeric::<u32>()?;
+
+        Ok(EncounterStartEvent {
+            encounter_id,
+            encounter_name,
+            difficulty,
+            group_size,
+            instance_id,
         })
     }
 
@@ -240,12 +259,15 @@ impl<'a> EventArgParser<'a> {
 
         let absorb = self.next_numeric::<u32>()?;
 
-        // TODO: Multiple Values are delimited by a `|` character
-        // Need to change these to Vec<T>
-        let power_type = PowerType::try_from(self.next_numeric::<u8>()?)?;
-        let current_power = self.next_numeric::<u32>()?;
-        let max_power = self.next_numeric::<u32>()?;
-        let power_cost = self.next_numeric::<u32>()?;
+        let power_type = MultiValue(
+            self.multi_value()?
+                .into_iter()
+                .map(|v| PowerType::try_from(v as u8).expect("power_type value in range of u8"))
+                .collect(),
+        );
+        let current_power = MultiValue(self.multi_value()?);
+        let max_power = MultiValue(self.multi_value()?);
+        let power_cost = MultiValue(self.multi_value()?);
 
         let x = self.next_numeric::<f32>()?;
         let y = self.next_numeric::<f32>()?;
@@ -287,6 +309,17 @@ impl<'a> EventArgParser<'a> {
 
     pub fn environmental(&mut self) -> Result<EnvironmentalType> {
         EnvironmentalType::try_from(self.next_string()?.as_str())
+    }
+
+    pub fn multi_value(&mut self) -> Result<Vec<u32>> {
+        let value = self.next_string()?;
+        Ok(value
+            .split('|')
+            .map(|s| {
+                s.parse::<u32>()
+                    .expect("a valid numeric value for multi-value")
+            })
+            .collect())
     }
 
     pub fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
