@@ -3,6 +3,19 @@ use eyre::{Report, Result, eyre};
 #[derive(Debug, Clone)]
 pub struct Guid(pub String);
 
+impl std::fmt::Display for Guid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::ops::Deref for Guid {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Target {
     pub guid: Guid,
@@ -823,6 +836,15 @@ impl std::fmt::Display for Special {
 pub enum Faction {
     Horde,
     Alliance,
+}
+
+impl std::fmt::Display for Faction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Horde => write!(f, "Horde"),
+            Self::Alliance => write!(f, "Alliance"),
+        }
+    }
 }
 
 #[repr(u16)]

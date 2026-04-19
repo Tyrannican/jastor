@@ -201,12 +201,12 @@ pub struct EncounterStartEvent {
 
 #[derive(Debug, Clone)]
 pub struct EncounterEndEvent {
-    encounter_id: u32,
-    encounter_name: String,
-    difficulty: Difficulty,
-    group_size: u32,
-    success: bool,
-    fight_time: u32,
+    pub encounter_id: u32,
+    pub encounter_name: String,
+    pub difficulty: Difficulty,
+    pub group_size: u32,
+    pub success: bool,
+    pub fight_time: u32,
 }
 
 #[derive(Debug, Clone)]

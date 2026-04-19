@@ -1,7 +1,7 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty,
+    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty, EncounterEndEvent,
     EncounterStartEvent, EnvironmentalType, Event, EventType, Guid, LogVersionEvent,
     MapChangeEvent, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent,
     Suffix, Target, UnitFlags, ZoneChangeEvent,
@@ -46,15 +46,18 @@ impl<R: BufRead> EventLogParser<R> {
 
         let args = args.trim();
         let event_type = EventType::try_from(event)?;
+        eprintln!("EVENT: {event_type} ARGS: {args}\n");
         let event = match event_type {
             EventType::CombatLogVersion => Event::LogVersion(self.parse_header(args)?),
             EventType::ZoneChange => Event::ZoneChange(self.parse_zone_change(args)?),
             EventType::MapChange => Event::MapChange(self.parse_map_change(args)?),
-            EventType::EncounterStart => Event::EncounterStart(self.parse_encounter_start(args)?),
+            EventType::EncounterStart | EventType::EncounterEnd => {
+                self.parse_encounter_start_end(event_type, args)?
+            }
             EventType::StaggerPrevented | EventType::StaggerClear => {
                 Event::Stagger(self.parse_stagger_event(event_type, args)?)
             }
-            EventType::CombatantInfo => todo!("combatant info needs done"),
+            EventType::CombatantInfo => Event::Combatant(Combatant::new(args)?),
             EventType::SwingDamage => Event::Combat(self.parse_combat_event(event_type, args)?),
             _ => Event::Combat(
                 self.parse_combat_event(event_type, args)
@@ -116,21 +119,44 @@ impl<R: BufRead> EventLogParser<R> {
         })
     }
 
-    fn parse_encounter_start(&self, args: &str) -> Result<EncounterStartEvent> {
+    fn parse_encounter_start_end(&self, event_type: EventType, args: &str) -> Result<Event> {
         let mut parser = EventArgParser::new(args, ',');
-        let encounter_id = parser.next_numeric::<u32>()?;
-        let encounter_name = parser.next_string()?;
-        let difficulty = Difficulty::from(parser.next_numeric::<u16>()?);
-        let group_size = parser.next_numeric::<u32>()?;
-        let instance_id = parser.next_numeric::<u32>()?;
 
-        Ok(EncounterStartEvent {
-            encounter_id,
-            encounter_name,
-            difficulty,
-            group_size,
-            instance_id,
-        })
+        match event_type {
+            EventType::EncounterStart => {
+                let encounter_id = parser.next_numeric::<u32>()?;
+                let encounter_name = parser.next_string()?;
+                let difficulty = Difficulty::from(parser.next_numeric::<u16>()?);
+                let group_size = parser.next_numeric::<u32>()?;
+                let instance_id = parser.next_numeric::<u32>()?;
+
+                Ok(Event::EncounterStart(EncounterStartEvent {
+                    encounter_id,
+                    encounter_name,
+                    difficulty,
+                    group_size,
+                    instance_id,
+                }))
+            }
+            EventType::EncounterEnd => {
+                let encounter_id = parser.next_numeric::<u32>()?;
+                let encounter_name = parser.next_string()?;
+                let difficulty = Difficulty::from(parser.next_numeric::<u16>()?);
+                let group_size = parser.next_numeric::<u32>()?;
+                let success = parser.next_numeric::<u8>()? == 1;
+                let fight_time = (parser.next_numeric::<u64>()? / 1000) as u32;
+
+                Ok(Event::EncounterEnd(EncounterEndEvent {
+                    encounter_id,
+                    encounter_name,
+                    difficulty,
+                    group_size,
+                    success,
+                    fight_time,
+                }))
+            }
+            _ => unreachable!("checked in outer match"),
+        }
     }
 
     fn parse_stagger_event(&self, event_type: EventType, args: &str) -> Result<StaggerEvent> {
@@ -152,7 +178,6 @@ impl<R: BufRead> EventLogParser<R> {
     }
 
     fn parse_combat_event(&self, event_type: EventType, args: &str) -> Result<CombatEvent> {
-        eprintln!("EVENT: {event_type} ARGS: {args}");
         let mut parser = EventArgParser::new(args, ',');
         let src = parser.target()?;
         let dst = parser.target()?;
@@ -200,6 +225,39 @@ impl<R: BufRead> Iterator for EventLogParser<R> {
         }
 
         Some(self.parse_event(line))
+    }
+}
+
+pub trait EventParser {
+    fn next(&mut self) -> String;
+
+    fn next_string(&mut self) -> Result<String> {
+        let value = self.next();
+        if value.is_empty() {
+            return Err(eyre!("expected a value, received empty string",));
+        }
+
+        Ok(value)
+    }
+
+    fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
+    where
+        T::Err: std::error::Error + Send + Sync + 'static,
+        <T as Num>::FromStrRadixErr: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
+    {
+        let value = self.next();
+        if value.is_empty() {
+            return Err(eyre!("expected a value, received empty string",));
+        }
+
+        if let Some(hex) = value.strip_prefix("0x") {
+            T::from_str_radix(hex, 16)
+                .map_err(|e| eyre!("unable to convert hex value: '{}': {}", value, e))
+        } else {
+            value
+                .parse::<T>()
+                .wrap_err_with(|| format!("unable to convert value to numeric - {value}",))
+        }
     }
 }
 
@@ -321,47 +379,9 @@ impl<'a> EventArgParser<'a> {
             })
             .collect())
     }
+}
 
-    pub fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
-    where
-        T::Err: std::error::Error + Send + Sync + 'static,
-        <T as Num>::FromStrRadixErr: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
-    {
-        let value = self.next();
-        if value.is_empty() {
-            return Err(eyre!(
-                "expected a value, received empty string - (Source: {}, Remainder: {})",
-                self.line,
-                self.rest
-            ));
-        }
-
-        if let Some(hex) = value.strip_prefix("0x") {
-            T::from_str_radix(hex, 16)
-                .map_err(|e| eyre!("unable to convert hex value: '{}': {}", value, e))
-        } else {
-            value.parse::<T>().wrap_err_with(|| {
-                format!(
-                    "unable to convert value to numeric - {value} ({})",
-                    self.line
-                )
-            })
-        }
-    }
-
-    pub fn next_string(&mut self) -> Result<String> {
-        let value = self.next();
-        if value.is_empty() {
-            return Err(eyre!(
-                "expected a value, received empty string - (Source: {}, Remainder: {})",
-                self.line,
-                self.rest
-            ));
-        }
-
-        Ok(value)
-    }
-
+impl<'a> EventParser for EventArgParser<'a> {
     fn next(&mut self) -> String {
         let mut item = String::new();
         let mut chars = self.rest.chars();

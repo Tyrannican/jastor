@@ -3,12 +3,12 @@ use jastor::parser::EventLogParser;
 use std::io::BufReader;
 
 fn main() -> eyre::Result<()> {
-    let file = "./logs/WoWCombatLog-040926_155448.txt";
+    let file = "./logs/WoWCombatLog-041726_203711.txt";
     let f = std::fs::File::open(file)?;
     let reader = BufReader::new(f);
     let parser = EventLogParser::new(reader);
-    for event in parser.into_iter() {
-        eprintln!("{:?}\n", event?);
+    for _event in parser.into_iter() {
+        // eprintln!("{:?}\n", event?);
     }
     // let paths = std::fs::read_dir("./logs")?;
     // for path in paths {
