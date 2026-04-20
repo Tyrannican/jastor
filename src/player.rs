@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use crate::{
     parser::EventParser,
     types::{Faction, Guid, Specialization},
 };
-use eyre::{Result, eyre};
+use eyre::{Context, Result, eyre};
+use num::Num;
 
 pub type Gem = (u32, u32);
 pub type Enchantment = (u32, u32, u32);
@@ -31,13 +34,64 @@ impl Combatant {
             Faction::Alliance
         };
 
-        let stats = Stats::new(&mut root_parser);
-        eprintln!("Stats: {stats:?}");
+        let stats = Stats::new(&mut root_parser)?;
         let spec = Specialization::try_from(root_parser.next_numeric::<u16>()?)?;
-        eprintln!("Spec: {spec}");
 
-        todo!()
+        let talent_str = root_parser.next();
+        let talents = parse_talents(&talent_str)?;
+
+        let pvp_talent_str = root_parser.next();
+        let pvp_talents = parse_pvp_talents(&pvp_talent_str)?;
+
+        let gear_str = root_parser.next();
+        eprintln!("GEAR: {gear_str}");
+        let auras = root_parser.next();
+        let pvp_stats = PvpStats::new(&mut root_parser)?;
+
+        Ok(Combatant {
+            guid,
+            faction,
+            stats,
+            spec,
+            talents,
+            pvp_talents,
+            equipment: todo!(),
+            auras: todo!(),
+            pvp_stats,
+        })
     }
+}
+
+fn parse_talents(talent_str: &str) -> Result<Vec<Talent>> {
+    let mut talents = Vec::new();
+    let mut talent_parser = CombatantParser::new(&talent_str);
+
+    loop {
+        let talent = talent_parser.next();
+        if talent.is_empty() {
+            break;
+        }
+
+        let talent_ids = talent_parser.parse_array(&talent)?;
+        assert!(talent_ids.len() == 3);
+        talents.push(Talent {
+            node_id: talent_ids[0],
+            entry_id: talent_ids[1],
+            rank: talent_ids[2],
+        });
+    }
+
+    Ok(talents)
+}
+
+fn parse_pvp_talents(pvp_str: &str) -> Result<PvpTalents> {
+    let mut parser = CombatantParser::new(pvp_str);
+    Ok((
+        parser.next_numeric::<u32>()?,
+        parser.next_numeric::<u32>()?,
+        parser.next_numeric::<u32>()?,
+        parser.next_numeric::<u32>()?,
+    ))
 }
 
 #[repr(C)]
@@ -105,6 +159,17 @@ pub struct PvpStats {
     tier: u32,
 }
 
+impl PvpStats {
+    pub fn new(parser: &mut CombatantParser) -> Result<Self> {
+        Ok(Self {
+            honor_level: parser.next_numeric::<u32>()?,
+            season: parser.next_numeric::<u32>()?,
+            rating: parser.next_numeric::<u32>()?,
+            tier: parser.next_numeric::<u32>()?,
+        })
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Talent {
@@ -143,6 +208,20 @@ impl<'a> CombatantParser<'a> {
             rest: input,
             delimiter: ',',
         }
+    }
+
+    pub fn parse_array<T: Num + FromStr>(&self, input: &str) -> Result<Vec<T>>
+    where
+        T::Err: std::error::Error + Send + Sync + 'static,
+        <T as Num>::FromStrRadixErr: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
+    {
+        input
+            .split(',')
+            .map(|v| {
+                v.parse::<T>()
+                    .wrap_err_with(|| format!("unable to convert value to numeric - {v}"))
+            })
+            .collect::<Result<Vec<T>>>()
     }
 }
 

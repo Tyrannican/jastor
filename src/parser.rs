@@ -46,7 +46,7 @@ impl<R: BufRead> EventLogParser<R> {
 
         let args = args.trim();
         let event_type = EventType::try_from(event)?;
-        eprintln!("EVENT: {event_type} ARGS: {args}\n");
+        // eprintln!("EVENT: {event_type} ARGS: {args}\n");
         let event = match event_type {
             EventType::CombatLogVersion => Event::LogVersion(self.parse_header(args)?),
             EventType::ZoneChange => Event::ZoneChange(self.parse_zone_change(args)?),
@@ -374,8 +374,10 @@ impl<'a> EventArgParser<'a> {
         Ok(value
             .split('|')
             .map(|s| {
-                s.parse::<u32>()
-                    .expect("a valid numeric value for multi-value")
+                let v = s
+                    .parse::<i32>()
+                    .expect(&format!("a valid numeric value for multi-value - {s}"));
+                if v < 0 { 0 } else { v as u32 }
             })
             .collect())
     }
