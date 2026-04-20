@@ -13,9 +13,9 @@ use num::Num;
 
 #[derive(Debug, Clone)]
 pub struct ParsedEvent {
-    timestamp: DateTime,
-    event_type: EventType,
-    event: Event,
+    pub timestamp: DateTime,
+    pub event_type: EventType,
+    pub event: Event,
 }
 
 pub struct EventLogParser<R: BufRead> {
@@ -46,22 +46,38 @@ impl<R: BufRead> EventLogParser<R> {
 
         let args = args.trim();
         let event_type = EventType::try_from(event)?;
-        eprintln!("EVENT: {event_type} ARGS: {args}\n");
+        // eprintln!("EVENT: {event_type} ARGS: {args}\n");
         let event = match event_type {
-            EventType::CombatLogVersion => Event::LogVersion(self.parse_header(args)?),
-            EventType::ZoneChange => Event::ZoneChange(self.parse_zone_change(args)?),
-            EventType::MapChange => Event::MapChange(self.parse_map_change(args)?),
-            EventType::EncounterStart | EventType::EncounterEnd => {
-                self.parse_encounter_start_end(event_type, args)?
+            EventType::CombatLogVersion => Event::LogVersion(
+                self.parse_header(args)
+                    .context("parsing combat log version")?,
+            ),
+            EventType::ZoneChange => Event::ZoneChange(
+                self.parse_zone_change(args)
+                    .context("parsing zone change")?,
+            ),
+            EventType::MapChange => {
+                Event::MapChange(self.parse_map_change(args).context("parsing map change")?)
             }
-            EventType::StaggerPrevented | EventType::StaggerClear => {
-                Event::Stagger(self.parse_stagger_event(event_type, args)?)
+            EventType::EncounterStart | EventType::EncounterEnd => self
+                .parse_encounter_start_end(event_type, args)
+                .context("parsing encounter start / end")?,
+            EventType::StaggerPrevented | EventType::StaggerClear => Event::Stagger(
+                self.parse_stagger_event(event_type, args)
+                    .context("parsing stagger")?,
+            ),
+            EventType::CombatantInfo => {
+                Event::Combatant(Combatant::new(args).context("parsing combatant info")?)
             }
-            EventType::CombatantInfo => Event::Combatant(Combatant::new(args)?),
-            EventType::SwingDamage => Event::Combat(self.parse_combat_event(event_type, args)?),
+            EventType::SwingDamage => Event::Combat(
+                self.parse_combat_event(event_type, args)
+                    .context("parsing swing damage")?,
+            ),
+            EventType::Emote => todo!(),
             _ => Event::Combat(
                 self.parse_combat_event(event_type, args)
-                    .context(format!("processing {} event", event_type))?,
+                    .context(format!("processing {} event", event_type))
+                    .with_context(|| format!("parsing combat event - {event_type}"))?,
             ),
         };
 
