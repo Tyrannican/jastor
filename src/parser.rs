@@ -46,7 +46,7 @@ impl<R: BufRead> EventLogParser<R> {
 
         let args = args.trim();
         let event_type = EventType::try_from(event)?;
-        // eprintln!("EVENT: {event_type} ARGS: {args}\n");
+        eprintln!("EVENT: {event_type} ARGS: {args}\n");
         let event = match event_type {
             EventType::CombatLogVersion => Event::LogVersion(self.parse_header(args)?),
             EventType::ZoneChange => Event::ZoneChange(self.parse_zone_change(args)?),
@@ -78,7 +78,7 @@ impl<R: BufRead> EventLogParser<R> {
         arg_parser.next_string()?;
         let advanced_log = arg_parser.next_string()? == "1";
         arg_parser.next_string()?;
-        let build = arg_parser.next_string()?;
+        let build = arg_parser.next_string()?.to_string();
 
         Ok(LogVersionEvent {
             version,
@@ -125,7 +125,7 @@ impl<R: BufRead> EventLogParser<R> {
         match event_type {
             EventType::EncounterStart => {
                 let encounter_id = parser.next_numeric::<u32>()?;
-                let encounter_name = parser.next_string()?;
+                let encounter_name = parser.next_string()?.to_string();
                 let difficulty = Difficulty::from(parser.next_numeric::<u16>()?);
                 let group_size = parser.next_numeric::<u32>()?;
                 let instance_id = parser.next_numeric::<u32>()?;
@@ -140,7 +140,7 @@ impl<R: BufRead> EventLogParser<R> {
             }
             EventType::EncounterEnd => {
                 let encounter_id = parser.next_numeric::<u32>()?;
-                let encounter_name = parser.next_string()?;
+                let encounter_name = parser.next_string()?.to_string();
                 let difficulty = Difficulty::from(parser.next_numeric::<u16>()?);
                 let group_size = parser.next_numeric::<u32>()?;
                 let success = parser.next_numeric::<u8>()? == 1;
@@ -161,7 +161,7 @@ impl<R: BufRead> EventLogParser<R> {
 
     fn parse_stagger_event(&self, event_type: EventType, args: &str) -> Result<StaggerEvent> {
         let mut parser = EventArgParser::new(args, ',');
-        let guid = Guid(parser.next_string()?);
+        let guid = Guid(parser.next_string()?.to_string());
         let (spell_id, amount): (Option<u32>, f32) = if event_type == EventType::StaggerPrevented {
             let spell_id = parser.next_numeric::<u32>()?;
             let amount = parser.next_numeric::<f32>()?;
@@ -228,10 +228,10 @@ impl<R: BufRead> Iterator for EventLogParser<R> {
     }
 }
 
-pub trait EventParser {
-    fn next(&mut self) -> String;
+pub trait EventParser<'a> {
+    fn next(&mut self) -> &'a str;
 
-    fn next_string(&mut self) -> Result<String> {
+    fn next_string(&mut self) -> Result<&'a str> {
         let value = self.next();
         if value.is_empty() {
             return Err(eyre!("expected a value, received empty string",));
@@ -277,7 +277,7 @@ impl<'a> EventArgParser<'a> {
     }
 
     pub fn target(&mut self) -> Result<Target> {
-        let guid = Guid(self.next_string()?);
+        let guid = Guid(self.next_string()?.to_string());
         let name = self.next_string()?.trim_matches('"').to_string();
         let unit_flags = self.next_numeric::<u32>()?;
         let raid_flags = self.next_numeric::<u32>()?;
@@ -303,13 +303,13 @@ impl<'a> EventArgParser<'a> {
     }
 
     pub fn advanced_parameters(&mut self) -> Result<AdvancedParameters> {
-        let info = Guid(self.next_string()?);
-        let owner = Guid(self.next_string()?);
-        let current_hp = self.next_numeric::<u32>()?;
+        let info = Guid(self.next_string()?.to_string());
+        let owner = Guid(self.next_string()?.to_string());
+        let current_hp = self.next_numeric::<i32>()?;
         let max_hp = self.next_numeric::<u32>()?;
         let attack_power = self.next_numeric::<u32>()?;
         let spell_power = self.next_numeric::<u32>()?;
-        let armor = self.next_numeric::<u32>()?;
+        let armor = self.next_numeric::<i32>()?;
 
         // No idea what these are -- clarify
         let _ = self.next_numeric::<u32>()?;
@@ -355,7 +355,7 @@ impl<'a> EventArgParser<'a> {
     }
 
     pub fn aura(&mut self, ignore_amount: bool) -> Result<(AuraType, u32)> {
-        let aura = AuraType::try_from(self.next_string()?.as_str())?;
+        let aura = AuraType::try_from(self.next_string()?)?;
         let amount = if !ignore_amount {
             self.next_numeric::<u32>()?
         } else {
@@ -366,7 +366,7 @@ impl<'a> EventArgParser<'a> {
     }
 
     pub fn environmental(&mut self) -> Result<EnvironmentalType> {
-        EnvironmentalType::try_from(self.next_string()?.as_str())
+        EnvironmentalType::try_from(self.next_string()?)
     }
 
     pub fn multi_value(&mut self) -> Result<Vec<u32>> {
@@ -383,29 +383,45 @@ impl<'a> EventArgParser<'a> {
     }
 }
 
-impl<'a> EventParser for EventArgParser<'a> {
-    fn next(&mut self) -> String {
-        let mut item = String::new();
-        let mut chars = self.rest.chars();
+impl<'a> EventParser<'a> for EventArgParser<'a> {
+    fn next(&mut self) -> &'a str {
+        let mut end = self.rest.len();
+        let mut new_start = self.rest.len();
+        let mut stack = Vec::with_capacity(4);
+        let mut iter = self.rest.char_indices();
 
-        while let Some(next) = chars.next() {
-            match next {
+        while let Some((i, ch)) = iter.next() {
+            match ch {
                 '"' => {
-                    while let Some(inner) = chars.next() {
-                        match inner {
-                            '"' => break,
-                            ch => item.push(ch),
+                    for (_, inner) in iter.by_ref() {
+                        if inner == '"' {
+                            break;
                         }
                     }
                 }
-                ch if ch == self.delimiter => {
+                '(' => stack.push(')'),
+                '[' => stack.push(']'),
+                ')' | ']' => {
+                    if stack.last() == Some(&ch) {
+                        stack.pop();
+                    }
+                }
+                ch if ch == self.delimiter && stack.is_empty() => {
+                    end = i;
+                    new_start = i + ch.len_utf8();
                     break;
                 }
-                ch => item.push(ch),
+                _ => {}
             }
         }
 
-        self.rest = chars.as_str();
-        item
+        let value = &self.rest[..end];
+        self.rest = &self.rest[new_start..];
+
+        if value.starts_with('"') || value.starts_with('(') || value.starts_with('[') {
+            &value[1..value.len() - 1]
+        } else {
+            value
+        }
     }
 }

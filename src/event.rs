@@ -57,12 +57,12 @@ pub struct SpellParameters {
 pub struct AdvancedParameters {
     pub info: Guid,
     pub owner: Guid,
-    pub current_hp: u32,
+    pub current_hp: i32,
     pub max_hp: u32,
     pub attack_power: u32,
     pub spell_power: u32,
     // TODO: Determine what the missing two events are
-    pub armor: u32,
+    pub armor: i32,
     pub absorb: u32,
 
     pub power_type: MultiValue<PowerType>,

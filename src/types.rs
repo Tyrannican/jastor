@@ -118,6 +118,8 @@ impl EventType {
             | Self::PartyKill
             | Self::SwingDamageLanded
             | Self::SwingMissed
+            | Self::EnvironmentalDamage
+            | Self::EnchantApplied
             | Self::SwingDamage => false,
             _ => true,
         }
@@ -144,6 +146,15 @@ impl EventType {
             | Self::SpellDispel
             | Self::SpellCreate
             | Self::SpellAuraBrokenSpell
+            | Self::RangeMissed
+            | Self::SpellResurrect
+            | Self::SpellInstakill
+            | Self::EnchantApplied
+            | Self::SpellEmpowerStart
+            | Self::SpellEmpowerEnd
+            | Self::SpellAbsorbedSupport
+            | Self::SpellStolen
+            | Self::SpellEmpowerInterrupt
             | Self::SpellAbsorbed => false,
             _ => true,
         }
@@ -802,6 +813,7 @@ enum Special {
     MainTank = 0x40000,
     MainAssist = 0x80000,
     None = 0x80000000,
+    Other(u32),
 }
 
 impl TryFrom<u32> for Special {
@@ -814,7 +826,7 @@ impl TryFrom<u32> for Special {
             0x40000 => Ok(Self::MainTank),
             0x80000 => Ok(Self::MainAssist),
             0x0 | 0x80000000 => Ok(Self::None),
-            other => Err(eyre!("invalid unit special flag - {other}")),
+            other => Ok(Self::Other(other)),
         }
     }
 }
@@ -827,6 +839,7 @@ impl std::fmt::Display for Special {
             Self::MainTank => write!(f, "MainTank"),
             Self::MainAssist => write!(f, "MainAssist"),
             Self::None => write!(f, "None"),
+            Self::Other(value) => write!(f, "Other({value})"),
         }
     }
 }

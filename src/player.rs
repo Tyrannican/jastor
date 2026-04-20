@@ -27,7 +27,7 @@ pub struct Combatant {
 impl Combatant {
     pub fn new(args: &str) -> Result<Self> {
         let mut root_parser = CombatantParser::new(args);
-        let guid = Guid(root_parser.next_string()?);
+        let guid = Guid(root_parser.next_string()?.to_string());
         let faction = if root_parser.next_numeric::<u8>()? == 0 {
             Faction::Horde
         } else {
@@ -43,9 +43,10 @@ impl Combatant {
         let pvp_talent_str = root_parser.next();
         let pvp_talents = parse_pvp_talents(&pvp_talent_str)?;
 
-        let gear_str = root_parser.next();
-        eprintln!("GEAR: {gear_str}");
-        let auras = root_parser.next();
+        let equipment_str = root_parser.next();
+        let equipment = parse_equipment(equipment_str)?;
+
+        let auras = parse_tracked_auras(root_parser.next())?;
         let pvp_stats = PvpStats::new(&mut root_parser)?;
 
         Ok(Combatant {
@@ -55,8 +56,8 @@ impl Combatant {
             spec,
             talents,
             pvp_talents,
-            equipment: todo!(),
-            auras: todo!(),
+            equipment,
+            auras,
             pvp_stats,
         })
     }
@@ -66,12 +67,8 @@ fn parse_talents(talent_str: &str) -> Result<Vec<Talent>> {
     let mut talents = Vec::new();
     let mut talent_parser = CombatantParser::new(&talent_str);
 
-    loop {
-        let talent = talent_parser.next();
-        if talent.is_empty() {
-            break;
-        }
-
+    let mut talent = talent_parser.next();
+    while !talent.is_empty() {
         let talent_ids = talent_parser.parse_array(&talent)?;
         assert!(talent_ids.len() == 3);
         talents.push(Talent {
@@ -79,9 +76,41 @@ fn parse_talents(talent_str: &str) -> Result<Vec<Talent>> {
             entry_id: talent_ids[1],
             rank: talent_ids[2],
         });
+        talent = talent_parser.next();
     }
 
     Ok(talents)
+}
+
+fn parse_equipment(equipment_str: &str) -> Result<Vec<Equipment>> {
+    let mut parser = CombatantParser::new(equipment_str);
+    let mut equip_str = parser.next();
+
+    let mut equipment = Vec::new();
+    while !equip_str.is_empty() {
+        equipment.push(Equipment::new(equip_str)?);
+        equip_str = parser.next();
+    }
+
+    Ok(equipment)
+}
+
+fn parse_tracked_auras(aura_str: &str) -> Result<Vec<TrackedAura>> {
+    let auras = aura_str.split(',').collect::<Vec<&str>>();
+    auras
+        .chunks(3)
+        .map(|aura| {
+            Ok(TrackedAura {
+                caster: Guid(aura[0].to_string()),
+                spell_id: aura[1]
+                    .parse::<u32>()
+                    .wrap_err_with(|| format!("expected spell id for aura - {}", aura[1]))?,
+                stacks: aura[2]
+                    .parse::<u32>()
+                    .wrap_err_with(|| format!("expected stacks for aura - {}", aura[2]))?,
+            })
+        })
+        .collect::<Result<Vec<TrackedAura>>>()
 }
 
 fn parse_pvp_talents(pvp_str: &str) -> Result<PvpTalents> {
@@ -182,9 +211,73 @@ pub struct Talent {
 pub struct Equipment {
     item_id: u32,
     item_level: u32,
-    enchantment: Enchantment,
-    bonus_id: Vec<u32>,
+    enchantment: Option<Enchantment>,
+    bonuses: Vec<u32>,
     gems: Vec<Gem>,
+}
+
+impl Equipment {
+    pub fn new(gear_str: &str) -> Result<Self> {
+        let mut parser = CombatantParser::new(gear_str);
+        let item_id = parser.next_numeric::<u32>()?;
+        let item_level = parser.next_numeric::<u32>()?;
+        let enchantment_str = parser.next();
+        let enchantment = if enchantment_str.is_empty() {
+            None
+        } else {
+            let values = enchantment_str
+                .split(',')
+                .map(|v| {
+                    v.parse::<u32>()
+                        .wrap_err_with(|| format!("expected numeric value for {v}"))
+                })
+                .collect::<Result<Vec<u32>>>()?;
+
+            assert!(values.len() == 3);
+            Some((values[0], values[1], values[2]))
+        };
+        let bonuses = parser
+            .next()
+            .split(',')
+            .filter_map(|v| {
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(
+                        v.parse::<u32>()
+                            .wrap_err_with(|| format!("expected bonus id value for {v}")),
+                    )
+                }
+            })
+            .collect::<Result<Vec<u32>>>()?;
+
+        let gem_strs = parser.next();
+        let gems = if gem_strs.is_empty() {
+            Vec::new()
+        } else {
+            let gem_parse = gem_strs
+                .split(',')
+                .map(|g| {
+                    g.parse::<u32>()
+                        .wrap_err_with(|| format!("expected value for gem - {g}"))
+                })
+                .collect::<Result<Vec<u32>>>()?;
+
+            assert_eq!(gem_parse.len() % 2, 0);
+            gem_parse
+                .chunks(2)
+                .map(|gem| (gem[0], gem[1]))
+                .collect::<Vec<Gem>>()
+        };
+
+        Ok(Self {
+            item_id,
+            item_level,
+            enchantment,
+            bonuses,
+            gems,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -225,49 +318,46 @@ impl<'a> CombatantParser<'a> {
     }
 }
 
-impl<'a> EventParser for CombatantParser<'a> {
-    fn next(&mut self) -> String {
-        let mut output = String::new();
-        let mut chars = self.rest.chars();
+impl<'a> EventParser<'a> for CombatantParser<'a> {
+    fn next(&mut self) -> &'a str {
+        let mut end = self.rest.len();
+        let mut new_start = self.rest.len();
+        let mut stack = Vec::with_capacity(4);
+        let mut iter = self.rest.char_indices();
 
-        while let Some(next) = chars.next() {
-            match next {
+        while let Some((i, ch)) = iter.next() {
+            match ch {
                 '"' => {
-                    while let Some(inner) = chars.next() {
-                        match inner {
-                            '"' => break,
-                            ch => output.push(ch),
+                    for (_, inner) in iter.by_ref() {
+                        if inner == '"' {
+                            break;
                         }
                     }
                 }
-                ch if (ch == '(' || ch == '[') => {
-                    let mut stack = vec![ch];
-                    let delim = if ch == '(' { ')' } else { ']' };
-                    while let Some(inner) = chars.next() {
-                        match inner {
-                            c if c == ch => {
-                                stack.push(c);
-                                output.push(c);
-                            }
-                            c if c == delim => {
-                                stack.pop();
-                                if stack.is_empty() {
-                                    break;
-                                }
-
-                                output.push(c);
-                            }
-                            _ => output.push(inner),
-                        }
+                '(' => stack.push(')'),
+                '[' => stack.push(']'),
+                ')' | ']' => {
+                    if stack.last() == Some(&ch) {
+                        stack.pop();
                     }
                 }
-                ch if ch == self.delimiter => break,
-                _ => output.push(next),
+                ch if ch == self.delimiter && stack.is_empty() => {
+                    end = i;
+                    new_start = i + ch.len_utf8();
+                    break;
+                }
+                _ => {}
             }
         }
 
-        self.rest = chars.as_str();
-        output
+        let value = &self.rest[..end];
+        self.rest = &self.rest[new_start..];
+
+        if value.starts_with('"') || value.starts_with('(') || value.starts_with('[') {
+            &value[1..value.len() - 1]
+        } else {
+            value
+        }
     }
 }
 
