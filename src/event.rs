@@ -20,6 +20,7 @@ pub enum Event {
     WorldMarkerRemoved(RaidFlag),
     ZoneChange(ZoneChangeEvent),
     MapChange(MapChangeEvent),
+    Emote(EmoteEvent),
     Placeholder,
 }
 
@@ -251,10 +252,7 @@ pub struct ZoneChangeEvent {
 }
 
 #[derive(Debug, Clone)]
-pub struct EmoteEvent {
-    src: Target,
-    text: String,
-}
+pub struct EmoteEvent;
 
 #[derive(Debug, Clone)]
 pub struct StaggerEvent {

@@ -1,10 +1,10 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty, EncounterEndEvent,
-    EncounterStartEvent, EnvironmentalType, Event, EventType, Guid, LogVersionEvent,
-    MapChangeEvent, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent,
-    Suffix, Target, UnitFlags, ZoneChangeEvent,
+    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty, EmoteEvent,
+    EncounterEndEvent, EncounterStartEvent, EnvironmentalType, Event, EventType, Guid,
+    LogVersionEvent, MapChangeEvent, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool,
+    StaggerEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -27,7 +27,8 @@ impl<R: BufRead> EventLogParser<R> {
         Self { reader }
     }
 
-    fn parse_event(&self, line: String) -> Result<ParsedEvent> {
+    fn parse_event(&self, line: impl AsRef<str>) -> Result<ParsedEvent> {
+        let line = line.as_ref();
         let Some((ts, rest)) = line.split_once("  ") else {
             panic!("invalid event found (expected timestamp) - {line}");
         };
@@ -46,7 +47,6 @@ impl<R: BufRead> EventLogParser<R> {
 
         let args = args.trim();
         let event_type = EventType::try_from(event)?;
-        // eprintln!("EVENT: {event_type} ARGS: {args}\n");
         let event = match event_type {
             EventType::CombatLogVersion => Event::LogVersion(
                 self.parse_header(args)
@@ -73,7 +73,7 @@ impl<R: BufRead> EventLogParser<R> {
                 self.parse_combat_event(event_type, args)
                     .context("parsing swing damage")?,
             ),
-            EventType::Emote => todo!(),
+            EventType::Emote => Event::Emote(EmoteEvent),
             _ => Event::Combat(
                 self.parse_combat_event(event_type, args)
                     .context(format!("processing {} event", event_type))
@@ -240,7 +240,15 @@ impl<R: BufRead> Iterator for EventLogParser<R> {
             }
         }
 
-        Some(self.parse_event(line))
+        let event = match self.parse_event(&line) {
+            Ok(e) => Ok(e),
+            Err(e) => {
+                eprintln!("error occurred on line {line}\n{}", e.to_string());
+                Err(e)
+            }
+        };
+
+        Some(event)
     }
 }
 
@@ -278,7 +286,6 @@ pub trait EventParser<'a> {
 }
 
 pub struct EventArgParser<'a> {
-    line: &'a str,
     rest: &'a str,
     delimiter: char,
 }
@@ -286,7 +293,6 @@ pub struct EventArgParser<'a> {
 impl<'a> EventArgParser<'a> {
     pub fn new(input: &'a str, delim: char) -> Self {
         Self {
-            line: input,
             rest: input,
             delimiter: delim,
         }
@@ -302,7 +308,7 @@ impl<'a> EventArgParser<'a> {
             guid,
             name,
             unit_flags: UnitFlags::new(unit_flags)?,
-            raid_flags: RaidFlag::try_from(raid_flags)?,
+            raid_flags: RaidFlag::try_from(raid_flags & 0xFF)?,
         })
     }
 

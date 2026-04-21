@@ -49,6 +49,7 @@ pub enum EventType {
     SpellAuraRefresh,
     SwingDamageLandedSupport,
     EnchantApplied,
+    EnchantRemoved,
     SpellDamage,
     SpellHealSupport,
     SpellAuraBrokenSpell,
@@ -120,6 +121,8 @@ impl EventType {
             | Self::SwingMissed
             | Self::EnvironmentalDamage
             | Self::EnchantApplied
+            | Self::EnchantRemoved
+            | Self::SpellAbsorbedSupport
             | Self::SwingDamage => false,
             _ => true,
         }
@@ -150,10 +153,12 @@ impl EventType {
             | Self::SpellResurrect
             | Self::SpellInstakill
             | Self::EnchantApplied
+            | Self::EnchantRemoved
             | Self::SpellEmpowerStart
             | Self::SpellEmpowerEnd
             | Self::SpellAbsorbedSupport
             | Self::SpellStolen
+            | Self::SpellAuraBroken
             | Self::SpellEmpowerInterrupt
             | Self::SpellAbsorbed => false,
             _ => true,
@@ -188,6 +193,7 @@ impl TryFrom<&str> for EventType {
             "SPELL_AURA_REFRESH" => Ok(Self::SpellAuraRefresh),
             "SWING_DAMAGE_LANDED_SUPPORT" => Ok(Self::SwingDamageLandedSupport),
             "ENCHANT_APPLIED" => Ok(Self::EnchantApplied),
+            "ENCHANT_REMOVED" => Ok(Self::EnchantRemoved),
             "SPELL_DAMAGE" => Ok(Self::SpellDamage),
             "SPELL_HEAL_SUPPORT" => Ok(Self::SpellHealSupport),
             "SPELL_AURA_BROKEN_SPELL" => Ok(Self::SpellAuraBrokenSpell),
@@ -262,6 +268,7 @@ impl std::fmt::Display for EventType {
             Self::SpellAuraRefresh => write!(f, "SPELL_AURA_REFRESH"),
             Self::SwingDamageLandedSupport => write!(f, "SWING_DAMAGE_LANDED_SUPPORT"),
             Self::EnchantApplied => write!(f, "ENCHANT_APPLIED"),
+            Self::EnchantRemoved => write!(f, "ENCHANT_REMOVED"),
             Self::SpellDamage => write!(f, "SPELL_DAMAGE"),
             Self::SpellHealSupport => write!(f, "SPELL_HEAL_SUPPORT"),
             Self::SpellAuraBrokenSpell => write!(f, "SPELL_AURA_BROKEN_SPELL"),

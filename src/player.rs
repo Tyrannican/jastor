@@ -149,9 +149,9 @@ pub struct Stats {
     haste_spell: u32,
     avoidance: u32,
     mastery: u32,
-    versatility_damage: u32,
-    versatility_healing: u32,
-    versatility_damage_taken: u32,
+    versatility_damage: i32,
+    versatility_healing: i32,
+    versatility_damage_taken: i32,
     armor: u32,
 }
 
@@ -176,9 +176,9 @@ impl Stats {
             haste_spell: parser.next_numeric::<u32>()?,
             avoidance: parser.next_numeric::<u32>()?,
             mastery: parser.next_numeric::<u32>()?,
-            versatility_damage: parser.next_numeric::<u32>()?,
-            versatility_healing: parser.next_numeric::<u32>()?,
-            versatility_damage_taken: parser.next_numeric::<u32>()?,
+            versatility_damage: parser.next_numeric::<i32>()?,
+            versatility_healing: parser.next_numeric::<i32>()?,
+            versatility_damage_taken: parser.next_numeric::<i32>()?,
             armor: parser.next_numeric::<u32>()?,
         })
     }
