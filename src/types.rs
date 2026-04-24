@@ -67,6 +67,7 @@ pub enum EventType {
     SpellEmpowerStart,
     SpellCastSuccess,
     DamageSplit,
+    DamageShield,
     SpellSummon,
     CombatantInfo,
     SpellMissed,
@@ -148,6 +149,7 @@ impl EventType {
             | Self::SpellInterrupt
             | Self::SpellDispel
             | Self::SpellCreate
+            | Self::DamageShield
             | Self::SpellAuraBrokenSpell
             | Self::RangeMissed
             | Self::SpellResurrect
@@ -226,6 +228,7 @@ impl TryFrom<&str> for EventType {
             "SPELL_PERIODIC_DAMAGE_SUPPORT" => Ok(Self::SpellPeriodicDamageSupport),
             "SPELL_PERIODIC_MISSED" => Ok(Self::SpellPeriodicMissed),
             "SWING_MISSED" => Ok(Self::SwingMissed),
+            "DAMAGE_SHIELD" => Ok(Self::DamageShield),
             "SPELL_PERIODIC_ENERGIZE" => Ok(Self::SpellPeriodicEnergize),
             "SPELL_EMPOWER_END" => Ok(Self::SpellEmpowerEnd),
             "RANGE_MISSED" => Ok(Self::RangeMissed),
@@ -269,6 +272,7 @@ impl std::fmt::Display for EventType {
             Self::SwingDamageLandedSupport => write!(f, "SWING_DAMAGE_LANDED_SUPPORT"),
             Self::EnchantApplied => write!(f, "ENCHANT_APPLIED"),
             Self::EnchantRemoved => write!(f, "ENCHANT_REMOVED"),
+            Self::DamageShield => write!(f, "DAMAGE_SHIELD"),
             Self::SpellDamage => write!(f, "SPELL_DAMAGE"),
             Self::SpellHealSupport => write!(f, "SPELL_HEAL_SUPPORT"),
             Self::SpellAuraBrokenSpell => write!(f, "SPELL_AURA_BROKEN_SPELL"),

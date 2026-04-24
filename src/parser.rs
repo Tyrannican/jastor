@@ -1,8 +1,8 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, Difficulty, EmoteEvent,
-    EncounterEndEvent, EncounterStartEvent, EnvironmentalType, Event, EventType, Guid,
+    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, DamageEvent, Difficulty,
+    EmoteEvent, EncounterEndEvent, EncounterStartEvent, EnvironmentalType, Event, EventType, Guid,
     LogVersionEvent, MapChangeEvent, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool,
     StaggerEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
 };
@@ -69,10 +69,6 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::CombatantInfo => {
                 Event::Combatant(Combatant::new(args).context("parsing combatant info")?)
             }
-            EventType::SwingDamage => Event::Combat(
-                self.parse_combat_event(event_type, args)
-                    .context("parsing swing damage")?,
-            ),
             EventType::Emote => Event::Emote(EmoteEvent),
             _ => Event::Combat(
                 self.parse_combat_event(event_type, args)
@@ -212,8 +208,13 @@ impl<R: BufRead> EventLogParser<R> {
             None
         };
 
-        let environmental = None;
-        let suffix = None;
+        let environmental = if event_type == EventType::EnvironmentalDamage {
+            parser.environmental().ok()
+        } else {
+            None
+        };
+
+        let suffix = self.parse_combat_suffix(event_type, &mut parser)?;
 
         Ok(CombatEvent {
             src: Some(src),
@@ -223,6 +224,21 @@ impl<R: BufRead> EventLogParser<R> {
             environmental,
             suffix,
         })
+    }
+
+    fn parse_combat_suffix(
+        &self,
+        event_type: EventType,
+        parser: &mut EventArgParser,
+    ) -> Result<Option<Suffix>> {
+        let suffix = match event_type {
+            EventType::SwingDamage | EventType::SpellDamage | EventType::RangeDamage => {
+                Some(Suffix::Damage(parser.damage()?))
+            }
+            _ => None,
+        };
+
+        Ok(suffix)
     }
 }
 
@@ -262,6 +278,10 @@ pub trait EventParser<'a> {
         }
 
         Ok(value)
+    }
+
+    fn next_boolean(&mut self) -> bool {
+        self.next() == "1"
     }
 
     fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
@@ -402,6 +422,33 @@ impl<'a> EventArgParser<'a> {
                 if v < 0 { 0 } else { v as u32 }
             })
             .collect())
+    }
+
+    pub fn damage(&mut self) -> Result<DamageEvent> {
+        let amount = self.next_numeric::<u32>()?;
+        let base_amount = self.next_numeric::<u32>()?;
+        let overkill = self.next_numeric::<i32>()?;
+        let overkill = if overkill < 0 { 0 } else { overkill as u32 };
+        let school = SpellSchool::try_from(self.next_numeric::<u8>()?)?;
+        let resisted = self.next_numeric::<u32>()?;
+        let blocked = self.next_numeric::<u32>()?;
+        let absorbed = self.next_numeric::<i32>()?;
+        let critical = self.next_boolean();
+        let glancing = self.next_boolean();
+        let crushing = self.next_boolean();
+
+        Ok(DamageEvent {
+            amount,
+            base_amount,
+            overkill,
+            school,
+            resisted,
+            blocked,
+            absorbed,
+            critical,
+            glancing,
+            crushing,
+        })
     }
 }
 

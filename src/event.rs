@@ -105,16 +105,16 @@ pub enum Suffix {
 
 #[derive(Debug, Clone)]
 pub struct DamageEvent {
-    amount: u32,
-    base_amount: u32,
-    overkill: u32,
-    school: SpellSchool,
-    resisted: u32,
-    blocked: u32,
-    absorbed: u32,
-    critical: bool,
-    glancing: bool,
-    crushing: bool,
+    pub amount: u32,
+    pub base_amount: u32,
+    pub overkill: u32,
+    pub school: SpellSchool,
+    pub resisted: u32,
+    pub blocked: u32,
+    pub absorbed: i32,
+    pub critical: bool,
+    pub glancing: bool,
+    pub crushing: bool,
 }
 
 #[derive(Debug, Clone)]
