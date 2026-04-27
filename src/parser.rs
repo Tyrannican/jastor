@@ -2,9 +2,10 @@ use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
     AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, DamageEvent, Difficulty,
-    EmoteEvent, EncounterEndEvent, EncounterStartEvent, EnvironmentalType, Event, EventType, Guid,
-    LogVersionEvent, MapChangeEvent, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool,
-    StaggerEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
+    EmoteEvent, EncounterEndEvent, EncounterStartEvent, EnvironmentalType, Event, EventType,
+    FailEvent, Guid, HealAbsorbEvent, HealEvent, LogVersionEvent, MapChangeEvent, MissEvent,
+    MissType, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, Suffix,
+    Target, UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -232,9 +233,25 @@ impl<R: BufRead> EventLogParser<R> {
         parser: &mut EventArgParser,
     ) -> Result<Option<Suffix>> {
         let suffix = match event_type {
-            EventType::SwingDamage | EventType::SpellDamage | EventType::RangeDamage => {
-                Some(Suffix::Damage(parser.damage()?))
+            EventType::SwingDamage
+            | EventType::SpellDamage
+            | EventType::RangeDamage
+            | EventType::SpellPeriodicDamage
+            | EventType::SpellPeriodicDamageSupport
+            | EventType::EnvironmentalDamage => Some(Suffix::Damage(parser.damage()?)),
+            // TMP
+            EventType::SwingMissed
+            | EventType::SpellMissed
+            | EventType::RangeMissed
+            | EventType::SpellPeriodicMissed => {
+                // eprintln!("{} -- {}", event_type, parser.rest);
+                None
             }
+            EventType::SpellHeal
+            | EventType::SpellPeriodicHeal
+            | EventType::SpellPeriodicHealSupport => Some(Suffix::Heal(parser.heal()?)),
+            EventType::SpellHealAbsorbed => Some(Suffix::HealAbsorbed(parser.heal_absorb()?)),
+            EventType::SpellCastFailed => Some(Suffix::Fail(parser.fail()?)),
             _ => None,
         };
 
@@ -448,6 +465,57 @@ impl<'a> EventArgParser<'a> {
             critical,
             glancing,
             crushing,
+        })
+    }
+
+    // TODO: Deal with this - has differnet values dependent on
+    // Miss Type
+    // Need to extend `MissEvent`
+    pub fn missed(&mut self) -> Result<MissEvent> {
+        // let miss_type = MissType::try_from(self.next_string()?)?;
+        // eprintln!("MISS: {miss_type:?}");
+        // let is_offhand = self.next_boolean();
+        // eprintln!("OFFHAND: {is_offhand}");
+        // let amount = self.next_numeric::<u32>()?;
+        // eprintln!("AMOUNT: {amount}");
+        // let critical = self.next_string()?;
+        // eprintln!("CRITICAL: {critical}");
+        todo!()
+    }
+
+    pub fn heal(&mut self) -> Result<HealEvent> {
+        let amount = self.next_numeric::<u32>()?;
+        let base_amount = self.next_numeric::<u32>()?;
+        let overhealing = self.next_numeric::<u32>()?;
+        let absorbed = self.next_numeric::<u32>()?;
+        let critical = self.next_boolean();
+
+        Ok(HealEvent {
+            amount,
+            base_amount,
+            overhealing,
+            absorbed,
+            critical,
+        })
+    }
+
+    pub fn heal_absorb(&mut self) -> Result<HealAbsorbEvent> {
+        let extra = self.target()?;
+        let params = self.spell_parameters()?;
+        let absorbed = self.next_numeric::<u32>()?;
+        let total_absorbed = self.next_numeric::<u32>()?;
+
+        Ok(HealAbsorbEvent {
+            extra,
+            spell: params,
+            absorbed,
+            total_absorbed,
+        })
+    }
+
+    pub fn fail(&mut self) -> Result<FailEvent> {
+        Ok(FailEvent {
+            msg: self.next_string()?.to_string(),
         })
     }
 }

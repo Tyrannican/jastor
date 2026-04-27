@@ -83,7 +83,8 @@ pub enum Suffix {
     Damage(DamageEvent),
     Missed(MissEvent),
     Heal(HealEvent),
-    HealAbsorbed,
+    HealAbsorbed(HealAbsorbEvent),
+    Fail(FailEvent),
     Absorbed(AbsorbEvent),
     Energize(EnergizeEvent),
     Drain(DrainEvent),
@@ -118,6 +119,11 @@ pub struct DamageEvent {
 }
 
 #[derive(Debug, Clone)]
+pub struct FailEvent {
+    pub msg: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct MissEvent {
     miss_type: MissType,
     offhand: bool,
@@ -127,11 +133,19 @@ pub struct MissEvent {
 
 #[derive(Debug, Clone)]
 pub struct HealEvent {
-    amount: u32,
-    base_amount: u32,
-    overhealing: u32,
-    absorbed: u32,
-    critical: bool,
+    pub amount: u32,
+    pub base_amount: u32,
+    pub overhealing: u32,
+    pub absorbed: u32,
+    pub critical: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct HealAbsorbEvent {
+    pub extra: Target,
+    pub spell: SpellParameters,
+    pub absorbed: u32,
+    pub total_absorbed: u32,
 }
 
 #[derive(Debug, Clone)]
