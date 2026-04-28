@@ -54,6 +54,7 @@ pub enum EventType {
     SpellHealSupport,
     SpellAuraBrokenSpell,
     SpellDispel,
+    SpellDispelFailed,
     SpellEmpowerInterrupt,
     SpellAbsorbedSupport,
     SpellEnergize,
@@ -148,6 +149,7 @@ impl EventType {
             | Self::SpellCastFailed
             | Self::SpellInterrupt
             | Self::SpellDispel
+            | Self::SpellDispelFailed
             | Self::SpellCreate
             | Self::DamageShield
             | Self::SpellAuraBrokenSpell
@@ -200,6 +202,7 @@ impl TryFrom<&str> for EventType {
             "SPELL_HEAL_SUPPORT" => Ok(Self::SpellHealSupport),
             "SPELL_AURA_BROKEN_SPELL" => Ok(Self::SpellAuraBrokenSpell),
             "SPELL_DISPEL" => Ok(Self::SpellDispel),
+            "SPELL_DISPEL_FAILED" => Ok(Self::SpellDispelFailed),
             "SPELL_EMPOWER_INTERRUPT" => Ok(Self::SpellEmpowerInterrupt),
             "SPELL_ABSORBED_SUPPORT" => Ok(Self::SpellAbsorbedSupport),
             "SPELL_ENERGIZE" => Ok(Self::SpellEnergize),
@@ -277,6 +280,7 @@ impl std::fmt::Display for EventType {
             Self::SpellHealSupport => write!(f, "SPELL_HEAL_SUPPORT"),
             Self::SpellAuraBrokenSpell => write!(f, "SPELL_AURA_BROKEN_SPELL"),
             Self::SpellDispel => write!(f, "SPELL_DISPEL"),
+            Self::SpellDispelFailed => write!(f, "SPELL_DISPEL_FAILED"),
             Self::SpellEmpowerInterrupt => write!(f, "SPELL_EMPOWER_INTERRUPT"),
             Self::SpellAbsorbedSupport => write!(f, "SPELL_ABSORBED_SUPPORT"),
             Self::SpellEnergize => write!(f, "SPELL_ENERGIZE"),

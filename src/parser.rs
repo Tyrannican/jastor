@@ -2,10 +2,11 @@ use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
     AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, DamageEvent, Difficulty,
-    EmoteEvent, EncounterEndEvent, EncounterStartEvent, EnvironmentalType, Event, EventType,
-    FailEvent, Guid, HealAbsorbEvent, HealEvent, LogVersionEvent, MapChangeEvent, MissEvent,
-    MissType, MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, Suffix,
-    Target, UnitFlags, ZoneChangeEvent,
+    DrainEvent, EmoteEvent, EncounterEndEvent, EncounterStartEvent, EnergizeEvent,
+    EnvironmentalType, Event, EventType, FailEvent, Guid, HealAbsorbEvent, HealEvent,
+    LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue, PowerType, RaidFlag,
+    SpellParameters, SpellSchool, StaggerEvent, StealEvent, StealWithAuraEvent, Suffix, Target,
+    UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -252,6 +253,18 @@ impl<R: BufRead> EventLogParser<R> {
             | EventType::SpellPeriodicHealSupport => Some(Suffix::Heal(parser.heal()?)),
             EventType::SpellHealAbsorbed => Some(Suffix::HealAbsorbed(parser.heal_absorb()?)),
             EventType::SpellCastFailed => Some(Suffix::Fail(parser.fail()?)),
+            EventType::SpellEnergize | EventType::SpellPeriodicEnergize => {
+                Some(Suffix::Energize(parser.energise()?))
+            }
+            EventType::SpellDrain => Some(Suffix::Drain(parser.drain(false)?)),
+            EventType::SpellInterrupt | EventType::SpellDispelFailed => {
+                Some(Suffix::Interrupt(parser.steal()?))
+            }
+            EventType::SpellStolen | EventType::SpellDispel => match event_type {
+                EventType::SpellStolen => Some(Suffix::Stolen(parser.steal_with_aura()?)),
+                EventType::SpellDispel => Some(Suffix::Dispel(parser.steal_with_aura()?)),
+                _ => unreachable!("caught by outer match arm"),
+            },
             _ => None,
         };
 
@@ -517,6 +530,51 @@ impl<'a> EventArgParser<'a> {
         Ok(FailEvent {
             msg: self.next_string()?.to_string(),
         })
+    }
+
+    pub fn energise(&mut self) -> Result<EnergizeEvent> {
+        let amount = self.next_numeric::<f32>()?;
+        let over_energize = self.next_numeric::<f32>()?;
+        let power = PowerType::try_from(self.next_numeric::<u8>()?)?;
+        let max = self.next_numeric::<u32>()?;
+
+        Ok(EnergizeEvent {
+            amount,
+            over_energize,
+            power,
+            max,
+        })
+    }
+
+    pub fn drain(&mut self, is_leech: bool) -> Result<DrainEvent> {
+        let amount = self.next_numeric::<u32>()?;
+        let power = PowerType::try_from(self.next_numeric::<u8>()?)?;
+        let extra_amount = self.next_numeric::<u32>()?;
+
+        let max = if is_leech {
+            0
+        } else {
+            self.next_numeric::<u32>()?
+        };
+
+        Ok(DrainEvent {
+            amount,
+            power,
+            extra_amount,
+            max,
+        })
+    }
+
+    pub fn steal(&mut self) -> Result<StealEvent> {
+        let spell = self.spell_parameters()?;
+        Ok(StealEvent(spell))
+    }
+
+    pub fn steal_with_aura(&mut self) -> Result<StealWithAuraEvent> {
+        let spell = self.spell_parameters()?;
+        let aura = AuraType::try_from(self.next_string()?)?;
+
+        Ok(StealWithAuraEvent { spell, aura })
     }
 }
 

@@ -157,33 +157,27 @@ pub struct AbsorbEvent {
 
 #[derive(Debug, Clone)]
 pub struct EnergizeEvent {
-    amount: u32,
-    over_energize: u32,
-    power: PowerType,
-    max: u32,
+    pub amount: f32,
+    pub over_energize: f32,
+    pub power: PowerType,
+    pub max: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct DrainEvent {
-    amount: u32,
-    power: PowerType,
-    extra_amount: u32,
-    max: u32,
+    pub amount: u32,
+    pub power: PowerType,
+    pub extra_amount: u32,
+    pub max: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct StealEvent {
-    spell: u32,
-    name: String,
-    school: SpellSchool,
-}
+pub struct StealEvent(pub SpellParameters);
 
 #[derive(Debug, Clone)]
 pub struct StealWithAuraEvent {
-    spell: u32,
-    name: String,
-    school: SpellSchool,
-    aura: AuraType,
+    pub spell: SpellParameters,
+    pub aura: AuraType,
 }
 
 #[derive(Debug, Clone)]
