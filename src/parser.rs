@@ -1,12 +1,12 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, AuraWithSpellEvent, CombatEvent, Combatant,
-    DamageEvent, Difficulty, DrainEvent, EmoteEvent, EncounterEndEvent, EncounterStartEvent,
-    EnergizeEvent, EnvironmentalType, Event, EventType, FailEvent, Guid, HealAbsorbEvent,
-    HealEvent, LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue, PowerType,
-    RaidFlag, SpellParameters, SpellSchool, StaggerEvent, StealEvent, StealWithAuraEvent, Suffix,
-    Target, UnitFlags, ZoneChangeEvent,
+    AbsorbEvent, AdvancedParameters, AuraEvent, AuraType, AuraWithSpellEvent, CombatEvent,
+    Combatant, DamageEvent, Difficulty, DrainEvent, EmoteEvent, EncounterEndEvent,
+    EncounterStartEvent, EnergizeEvent, EnvironmentalType, Event, EventType, FailEvent, Guid,
+    HealAbsorbEvent, HealEvent, LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue,
+    PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, StealEvent,
+    StealWithAuraEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -196,7 +196,11 @@ impl<R: BufRead> EventLogParser<R> {
         let src = parser.target()?;
         let dst = parser.target()?;
 
-        let spell_parameters = if event_type == EventType::SpellAbsorbed {
+        // TODO: Error here
+        // Need to determine if the next item is a spell or GUID
+        let spell_parameters = if event_type == EventType::SpellAbsorbed
+            || event_type == EventType::SpellAbsorbedSupport
+        {
             parser.spell_parameters().ok()
         } else if event_type.has_spell_parameters() {
             Some(parser.spell_parameters()?)
@@ -249,6 +253,10 @@ impl<R: BufRead> EventLogParser<R> {
             | EventType::DamageShieldMissed
             | EventType::SpellPeriodicMissed => {
                 // eprintln!("{} -- {}", event_type, parser.rest);
+                None
+            }
+            EventType::SpellAbsorbed | EventType::SpellAbsorbedSupport => {
+                // Some(Suffix::Absorbed(parser.absorb(event_type)?))
                 None
             }
             EventType::SpellHeal
@@ -313,43 +321,6 @@ impl<R: BufRead> Iterator for EventLogParser<R> {
         };
 
         Some(event)
-    }
-}
-
-pub trait EventParser<'a> {
-    fn next(&mut self) -> &'a str;
-
-    fn next_string(&mut self) -> Result<&'a str> {
-        let value = self.next();
-        if value.is_empty() {
-            return Err(eyre!("expected a value, received empty string",));
-        }
-
-        Ok(value)
-    }
-
-    fn next_boolean(&mut self) -> bool {
-        self.next() == "1"
-    }
-
-    fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
-    where
-        T::Err: std::error::Error + Send + Sync + 'static,
-        <T as Num>::FromStrRadixErr: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
-    {
-        let value = self.next();
-        if value.is_empty() {
-            return Err(eyre!("expected a value, received empty string",));
-        }
-
-        if let Some(hex) = value.strip_prefix("0x") {
-            T::from_str_radix(hex, 16)
-                .map_err(|e| eyre!("unable to convert hex value: '{}': {}", value, e))
-        } else {
-            value
-                .parse::<T>()
-                .wrap_err_with(|| format!("unable to convert value to numeric - {value}",))
-        }
     }
 }
 
@@ -521,6 +492,28 @@ impl<'a> EventArgParser<'a> {
         todo!()
     }
 
+    pub fn absorb(&mut self, event_type: EventType) -> Result<AbsorbEvent> {
+        let caster = self.target()?;
+        let spell = self.spell_parameters()?;
+        let amount = self.next_numeric::<u32>()?;
+        let total_amount = self.next_numeric::<u32>()?;
+        let critical = self.next_boolean();
+        let target = if event_type == EventType::SpellAbsorbedSupport {
+            Some(Guid(self.next_string()?.to_string()))
+        } else {
+            None
+        };
+
+        Ok(AbsorbEvent {
+            caster,
+            spell,
+            amount,
+            total_amount,
+            critical,
+            target,
+        })
+    }
+
     pub fn heal(&mut self) -> Result<HealEvent> {
         let amount = self.next_numeric::<u32>()?;
         let base_amount = self.next_numeric::<u32>()?;
@@ -605,6 +598,38 @@ impl<'a> EventArgParser<'a> {
     fn is_empty(&self) -> bool {
         self.rest.is_empty()
     }
+
+    fn peek(&self) -> &'a str {
+        let mut end = self.rest.len();
+        let mut stack = Vec::with_capacity(4);
+        let mut iter = self.rest.char_indices();
+
+        while let Some((i, ch)) = iter.next() {
+            match ch {
+                '"' => {
+                    for (_, inner) in iter.by_ref() {
+                        if inner == '"' {
+                            break;
+                        }
+                    }
+                }
+                '(' => stack.push(')'),
+                '[' => stack.push(']'),
+                ')' | ']' => {
+                    if stack.last() == Some(&ch) {
+                        stack.pop();
+                    }
+                }
+                ch if ch == self.delimiter && stack.is_empty() => {
+                    end = i;
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        &self.rest[..end]
+    }
 }
 
 impl<'a> EventParser<'a> for EventArgParser<'a> {
@@ -646,6 +671,43 @@ impl<'a> EventParser<'a> for EventArgParser<'a> {
             &value[1..value.len() - 1]
         } else {
             value
+        }
+    }
+}
+
+pub trait EventParser<'a> {
+    fn next(&mut self) -> &'a str;
+
+    fn next_string(&mut self) -> Result<&'a str> {
+        let value = self.next();
+        if value.is_empty() {
+            return Err(eyre!("expected a value, received empty string",));
+        }
+
+        Ok(value)
+    }
+
+    fn next_boolean(&mut self) -> bool {
+        self.next() == "1"
+    }
+
+    fn next_numeric<T: Num + FromStr>(&mut self) -> Result<T>
+    where
+        T::Err: std::error::Error + Send + Sync + 'static,
+        <T as Num>::FromStrRadixErr: std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
+    {
+        let value = self.next();
+        if value.is_empty() {
+            return Err(eyre!("expected a value, received empty string",));
+        }
+
+        if let Some(hex) = value.strip_prefix("0x") {
+            T::from_str_radix(hex, 16)
+                .map_err(|e| eyre!("unable to convert hex value: '{}': {}", value, e))
+        } else {
+            value
+                .parse::<T>()
+                .wrap_err_with(|| format!("unable to convert value to numeric - {value}",))
         }
     }
 }
