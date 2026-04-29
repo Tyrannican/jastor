@@ -1,12 +1,12 @@
 use std::{io::BufRead, str::FromStr};
 
 use crate::event::{
-    AdvancedParameters, AuraEvent, AuraType, CombatEvent, Combatant, DamageEvent, Difficulty,
-    DrainEvent, EmoteEvent, EncounterEndEvent, EncounterStartEvent, EnergizeEvent,
-    EnvironmentalType, Event, EventType, FailEvent, Guid, HealAbsorbEvent, HealEvent,
-    LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue, PowerType, RaidFlag,
-    SpellParameters, SpellSchool, StaggerEvent, StealEvent, StealWithAuraEvent, Suffix, Target,
-    UnitFlags, ZoneChangeEvent,
+    AdvancedParameters, AuraEvent, AuraType, AuraWithSpellEvent, CombatEvent, Combatant,
+    DamageEvent, Difficulty, DrainEvent, EmoteEvent, EncounterEndEvent, EncounterStartEvent,
+    EnergizeEvent, EnvironmentalType, Event, EventType, FailEvent, Guid, HealAbsorbEvent,
+    HealEvent, LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue, PowerType,
+    RaidFlag, SpellParameters, SpellSchool, StaggerEvent, StealEvent, StealWithAuraEvent, Suffix,
+    Target, UnitFlags, ZoneChangeEvent,
 };
 
 use eyre::{Context, Result, eyre};
@@ -239,11 +239,14 @@ impl<R: BufRead> EventLogParser<R> {
             | EventType::RangeDamage
             | EventType::SpellPeriodicDamage
             | EventType::SpellPeriodicDamageSupport
+            | EventType::DamageSplit
+            | EventType::DamageShield
             | EventType::EnvironmentalDamage => Some(Suffix::Damage(parser.damage()?)),
             // TMP
             EventType::SwingMissed
             | EventType::SpellMissed
             | EventType::RangeMissed
+            | EventType::DamageShieldMissed
             | EventType::SpellPeriodicMissed => {
                 // eprintln!("{} -- {}", event_type, parser.rest);
                 None
@@ -265,6 +268,21 @@ impl<R: BufRead> EventLogParser<R> {
                 EventType::SpellDispel => Some(Suffix::Dispel(parser.steal_with_aura()?)),
                 _ => unreachable!("caught by outer match arm"),
             },
+            EventType::SpellExtraAttacks => {
+                Some(Suffix::ExtraAttacks(parser.next_numeric::<u32>()?))
+            }
+            EventType::SpellAuraApplied
+            | EventType::SpellAuraRemoved
+            | EventType::SpellAuraAppliedDose
+            | EventType::SpellAuraRemovedDose
+            | EventType::SpellAuraRefresh => Some(Suffix::Aura(parser.aura()?)),
+            EventType::SpellAuraBroken => Some(Suffix::AuraBroken(AuraType::try_from(
+                parser.next_string()?,
+            )?)),
+            EventType::SpellAuraBrokenSpell => Some(Suffix::AuraBrokenSpell(parser.aura_spell()?)),
+            EventType::SpellEmpowerInterrupt | EventType::SpellEmpowerEnd => {
+                Some(Suffix::Empower(parser.next_numeric::<u32>()?))
+            }
             _ => None,
         };
 
@@ -426,15 +444,22 @@ impl<'a> EventArgParser<'a> {
         })
     }
 
-    pub fn aura(&mut self, ignore_amount: bool) -> Result<(AuraType, u32)> {
+    pub fn aura(&mut self) -> Result<AuraEvent> {
         let aura = AuraType::try_from(self.next_string()?)?;
-        let amount = if !ignore_amount {
-            self.next_numeric::<u32>()?
+        let amount = if !self.is_empty() {
+            Some(self.next_numeric::<u32>()?)
         } else {
-            0
+            None
         };
 
-        Ok((aura, amount))
+        Ok(AuraEvent { aura, amount })
+    }
+
+    pub fn aura_spell(&mut self) -> Result<AuraWithSpellEvent> {
+        let spell = self.spell_parameters()?;
+        let aura = AuraType::try_from(self.next_string()?)?;
+
+        Ok(AuraWithSpellEvent { spell, aura })
     }
 
     pub fn environmental(&mut self) -> Result<EnvironmentalType> {
@@ -575,6 +600,10 @@ impl<'a> EventArgParser<'a> {
         let aura = AuraType::try_from(self.next_string()?)?;
 
         Ok(StealWithAuraEvent { spell, aura })
+    }
+
+    fn is_empty(&self) -> bool {
+        self.rest.is_empty()
     }
 }
 

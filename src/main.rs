@@ -25,6 +25,7 @@ fn main() -> eyre::Result<()> {
 
         for event in parser.into_iter() {
             let event = event?;
+            eprintln!("{event:?}");
             match event.event {
                 Event::LogVersion(log_version) => {
                     if log_version.build.as_str() < "12.0.0" {

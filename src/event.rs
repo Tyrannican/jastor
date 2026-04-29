@@ -183,13 +183,13 @@ pub struct StealWithAuraEvent {
 #[derive(Debug, Clone)]
 pub struct AuraEvent {
     pub aura: AuraType,
-    pub amount: u32,
+    pub amount: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AuraWithSpellEvent {
-    spell: SpellParameters,
-    aura: AuraType,
+    pub spell: SpellParameters,
+    pub aura: AuraType,
 }
 
 #[derive(Debug, Clone)]
