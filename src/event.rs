@@ -44,12 +44,6 @@ pub struct CombatEvent {
 }
 
 #[derive(Debug, Clone)]
-pub struct BaseParameters {
-    src: Option<Target>,
-    dst: Option<Target>,
-}
-
-#[derive(Debug, Clone)]
 pub struct SpellParameters {
     pub spell_id: u32,
     pub spell_name: String,
