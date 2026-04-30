@@ -13,15 +13,15 @@ pub type PvpTalents = (u32, u32, u32, u32);
 
 #[derive(Debug, Clone)]
 pub struct Combatant {
-    guid: Guid,
-    faction: Faction,
-    stats: Stats,
-    spec: Specialization,
-    talents: Vec<Talent>,
-    pvp_talents: PvpTalents,
-    equipment: Vec<Equipment>,
-    auras: Vec<TrackedAura>,
-    pvp_stats: PvpStats,
+    pub guid: Guid,
+    pub faction: Faction,
+    pub stats: Stats,
+    pub spec: Specialization,
+    pub talents: Vec<Talent>,
+    pub pvp_talents: PvpTalents,
+    pub equipment: Vec<Equipment>,
+    pub auras: Vec<TrackedAura>,
+    pub pvp_stats: PvpStats,
 }
 
 impl Combatant {
@@ -214,11 +214,11 @@ pub struct Talent {
 
 #[derive(Debug, Clone)]
 pub struct Equipment {
-    item_id: u32,
-    item_level: u32,
-    enchantment: Option<Enchantment>,
-    bonuses: Vec<u32>,
-    gems: Vec<Gem>,
+    pub item_id: u32,
+    pub item_level: u32,
+    pub enchantment: Option<Enchantment>,
+    pub bonuses: Vec<u32>,
+    pub gems: Vec<Gem>,
 }
 
 impl Equipment {
@@ -287,14 +287,13 @@ impl Equipment {
 
 #[derive(Debug, Clone)]
 pub struct TrackedAura {
-    caster: Guid,
-    spell_id: u32,
-    stacks: u32,
+    pub caster: Guid,
+    pub spell_id: u32,
+    pub stacks: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct CombatantParser<'a> {
-    line: &'a str,
     rest: &'a str,
     delimiter: char,
 }
@@ -302,7 +301,6 @@ pub struct CombatantParser<'a> {
 impl<'a> CombatantParser<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
-            line: input,
             rest: input,
             delimiter: ',',
         }
