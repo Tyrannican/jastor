@@ -1,3 +1,4 @@
+use crate::types::CastType;
 pub use crate::{
     player::Combatant,
     types::{
@@ -125,10 +126,12 @@ pub struct FailEvent {
 
 #[derive(Debug, Clone)]
 pub struct MissEvent {
-    miss_type: MissType,
-    offhand: bool,
-    amount: u32,
-    critical: bool,
+    pub miss_type: MissType,
+    pub is_offhand: bool,
+    pub amount: Option<i32>,
+    pub base_amount: Option<i32>,
+    pub critical: Option<bool>,
+    pub cast_type: Option<CastType>,
 }
 
 #[derive(Debug, Clone)]

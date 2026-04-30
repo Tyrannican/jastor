@@ -381,6 +381,24 @@ impl TryFrom<&str> for AuraType {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+pub enum CastType {
+    SingleTarget,
+    AreaOfEffect,
+}
+
+impl TryFrom<&str> for CastType {
+    type Error = Report;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "ST" => Ok(Self::SingleTarget),
+            "AOE" => Ok(Self::AreaOfEffect),
+            _ => Err(eyre!("invalid cast type - {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum EnvironmentalType {
     Drowning,
     Falling,

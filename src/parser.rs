@@ -1,12 +1,15 @@
 use std::{io::BufRead, str::FromStr};
 
-use crate::event::{
-    AbsorbEvent, AdvancedParameters, AuraEvent, AuraType, AuraWithSpellEvent, CombatEvent,
-    Combatant, DamageEvent, Difficulty, DrainEvent, EmoteEvent, EncounterEndEvent,
-    EncounterStartEvent, EnergizeEvent, EnvironmentalType, Event, EventType, FailEvent, Guid,
-    HealAbsorbEvent, HealEvent, LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue,
-    PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, StealEvent,
-    StealWithAuraEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
+use crate::{
+    event::{
+        AbsorbEvent, AdvancedParameters, AuraEvent, AuraType, AuraWithSpellEvent, CombatEvent,
+        Combatant, DamageEvent, Difficulty, DrainEvent, EmoteEvent, EncounterEndEvent,
+        EncounterStartEvent, EnergizeEvent, EnvironmentalType, Event, EventType, FailEvent, Guid,
+        HealAbsorbEvent, HealEvent, LogVersionEvent, MapChangeEvent, MissEvent, MissType,
+        MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, StealEvent,
+        StealWithAuraEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
+    },
+    types::CastType,
 };
 
 use eyre::{Context, Result, eyre};
@@ -245,10 +248,7 @@ impl<R: BufRead> EventLogParser<R> {
             | EventType::SpellMissed
             | EventType::RangeMissed
             | EventType::DamageShieldMissed
-            | EventType::SpellPeriodicMissed => {
-                // eprintln!("{} -- {}", event_type, parser.rest);
-                None
-            }
+            | EventType::SpellPeriodicMissed => Some(Suffix::Missed(parser.missed(event_type)?)),
             EventType::SpellAbsorbed | EventType::SpellAbsorbedSupport => {
                 Some(Suffix::Absorbed(parser.absorb(event_type)?))
             }
@@ -470,19 +470,37 @@ impl<'a> EventArgParser<'a> {
         })
     }
 
-    // TODO: Deal with this - has differnet values dependent on
-    // Miss Type
-    // Need to extend `MissEvent`
-    pub fn missed(&mut self) -> Result<MissEvent> {
-        // let miss_type = MissType::try_from(self.next_string()?)?;
-        // eprintln!("MISS: {miss_type:?}");
-        // let is_offhand = self.next_boolean();
-        // eprintln!("OFFHAND: {is_offhand}");
-        // let amount = self.next_numeric::<u32>()?;
-        // eprintln!("AMOUNT: {amount}");
-        // let critical = self.next_string()?;
-        // eprintln!("CRITICAL: {critical}");
-        todo!()
+    pub fn missed(&mut self, event_type: EventType) -> Result<MissEvent> {
+        let miss_type = MissType::try_from(self.next_string()?)?;
+        let is_offhand = self.next_boolean();
+        let (amount, base_amount, critical) = match miss_type {
+            MissType::Block | MissType::Resist => {
+                let amount = self.next_numeric::<i32>()?;
+                (Some(amount), None, None)
+            }
+            MissType::Absorb => {
+                let amount = self.next_numeric::<i32>()?;
+                let base = self.next_numeric::<i32>()?;
+                let critical = self.next_boolean();
+
+                (Some(amount), Some(base), Some(critical))
+            }
+            _ => (None, None, None),
+        };
+
+        let cast_type = match event_type {
+            EventType::SwingMissed | EventType::RangeMissed => None,
+            _ => Some(CastType::try_from(self.next_string()?)?),
+        };
+
+        Ok(MissEvent {
+            miss_type,
+            is_offhand,
+            amount,
+            base_amount,
+            critical,
+            cast_type,
+        })
     }
 
     pub fn absorb(&mut self, event_type: EventType) -> Result<AbsorbEvent> {
