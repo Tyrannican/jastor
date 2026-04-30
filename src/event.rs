@@ -150,9 +150,10 @@ pub struct HealAbsorbEvent {
 
 #[derive(Debug, Clone)]
 pub struct AbsorbEvent {
+    pub src_spell: Option<SpellParameters>,
     pub caster: Target,
     pub spell: SpellParameters,
-    pub amount: u32,
+    pub amount: i32,
     pub total_amount: u32,
     pub critical: bool,
     pub target: Option<Guid>,

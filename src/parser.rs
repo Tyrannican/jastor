@@ -196,13 +196,7 @@ impl<R: BufRead> EventLogParser<R> {
         let src = parser.target()?;
         let dst = parser.target()?;
 
-        // TODO: Error here
-        // Need to determine if the next item is a spell or GUID
-        let spell_parameters = if event_type == EventType::SpellAbsorbed
-            || event_type == EventType::SpellAbsorbedSupport
-        {
-            parser.spell_parameters().ok()
-        } else if event_type.has_spell_parameters() {
+        let spell_parameters = if event_type.has_spell_parameters() {
             Some(parser.spell_parameters()?)
         } else {
             None
@@ -256,8 +250,7 @@ impl<R: BufRead> EventLogParser<R> {
                 None
             }
             EventType::SpellAbsorbed | EventType::SpellAbsorbedSupport => {
-                // Some(Suffix::Absorbed(parser.absorb(event_type)?))
-                None
+                Some(Suffix::Absorbed(parser.absorb(event_type)?))
             }
             EventType::SpellHeal
             | EventType::SpellPeriodicHeal
@@ -493,9 +486,21 @@ impl<'a> EventArgParser<'a> {
     }
 
     pub fn absorb(&mut self, event_type: EventType) -> Result<AbsorbEvent> {
+        let next = self
+            .peek()
+            .chars()
+            .next()
+            .expect("valid character for absorb event");
+
+        let src_spell = if next.is_digit(10) {
+            Some(self.spell_parameters()?)
+        } else {
+            None
+        };
+
         let caster = self.target()?;
         let spell = self.spell_parameters()?;
-        let amount = self.next_numeric::<u32>()?;
+        let amount = self.next_numeric::<i32>()?;
         let total_amount = self.next_numeric::<u32>()?;
         let critical = self.next_boolean();
         let target = if event_type == EventType::SpellAbsorbedSupport {
@@ -505,6 +510,7 @@ impl<'a> EventArgParser<'a> {
         };
 
         Ok(AbsorbEvent {
+            src_spell,
             caster,
             spell,
             amount,

@@ -125,6 +125,7 @@ impl EventType {
             | Self::EnvironmentalDamage
             | Self::EnchantApplied
             | Self::EnchantRemoved
+            | Self::SpellAbsorbed
             | Self::SpellAbsorbedSupport
             | Self::SwingDamage => false,
             _ => true,
