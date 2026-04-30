@@ -21,6 +21,7 @@ pub enum Event {
     WorldMarkerRemoved(RaidFlag),
     ZoneChange(ZoneChangeEvent),
     MapChange(MapChangeEvent),
+    Enchant(EnchantEvent),
     Emote(EmoteEvent),
     Placeholder,
 }
@@ -201,9 +202,9 @@ pub struct AuraWithSpellEvent {
 
 #[derive(Debug, Clone)]
 pub struct EnchantEvent {
-    name: String,
-    item_id: u32,
-    item_name: String,
+    pub name: String,
+    pub item_id: u32,
+    pub item_name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -227,26 +228,26 @@ pub struct EncounterEndEvent {
 
 #[derive(Debug, Clone)]
 pub struct ArenaStartEvent {
-    instance_id: u32,
-    unk: u32,
-    match_type: String,
-    team_id: u32,
+    pub instance_id: u32,
+    pub unk: u32,
+    pub match_type: String,
+    pub team_id: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct ArenaEndEvent {
-    winning_team: bool,
-    match_duration: u32,
-    new_rating_team_one: u32,
-    new_rating_team_two: u32,
+    pub winning_team: bool,
+    pub match_duration: u32,
+    pub new_rating_team_one: u32,
+    pub new_rating_team_two: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct WorldMarkerPlacedEvent {
-    instance_id: u32,
-    marker: RaidFlag,
-    x: f32,
-    y: f32,
+    pub instance_id: u32,
+    pub marker: RaidFlag,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, Clone)]

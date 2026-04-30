@@ -2,12 +2,13 @@ use std::{io::BufRead, str::FromStr};
 
 use crate::{
     event::{
-        AbsorbEvent, AdvancedParameters, AuraEvent, AuraType, AuraWithSpellEvent, CombatEvent,
-        Combatant, DamageEvent, Difficulty, DrainEvent, EmoteEvent, EncounterEndEvent,
-        EncounterStartEvent, EnergizeEvent, EnvironmentalType, Event, EventType, FailEvent, Guid,
-        HealAbsorbEvent, HealEvent, LogVersionEvent, MapChangeEvent, MissEvent, MissType,
-        MultiValue, PowerType, RaidFlag, SpellParameters, SpellSchool, StaggerEvent, StealEvent,
-        StealWithAuraEvent, Suffix, Target, UnitFlags, ZoneChangeEvent,
+        AbsorbEvent, AdvancedParameters, ArenaEndEvent, ArenaStartEvent, AuraEvent, AuraType,
+        AuraWithSpellEvent, CombatEvent, Combatant, DamageEvent, Difficulty, DrainEvent,
+        EmoteEvent, EnchantEvent, EncounterEndEvent, EncounterStartEvent, EnergizeEvent,
+        EnvironmentalType, Event, EventType, FailEvent, Guid, HealAbsorbEvent, HealEvent,
+        LogVersionEvent, MapChangeEvent, MissEvent, MissType, MultiValue, PowerType, RaidFlag,
+        SpellParameters, SpellSchool, StaggerEvent, StealEvent, StealWithAuraEvent, Suffix, Target,
+        UnitFlags, WorldMarkerPlacedEvent, ZoneChangeEvent,
     },
     types::CastType,
 };
@@ -67,6 +68,12 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::EncounterStart | EventType::EncounterEnd => self
                 .parse_encounter_start_end(event_type, args)
                 .context("parsing encounter start / end")?,
+            EventType::ArenaMatchStart | EventType::ArenaMatchEnd => self
+                .parse_arena_start_end(event_type, args)
+                .context("parsing arena start / end")?,
+            EventType::WorldMarkerPlaced | EventType::WorldMarkerRemoved => {
+                self.parse_world_marker_placed_removed(event_type, args)?
+            }
             EventType::StaggerPrevented | EventType::StaggerClear => Event::Stagger(
                 self.parse_stagger_event(event_type, args)
                     .context("parsing stagger")?,
@@ -173,6 +180,68 @@ impl<R: BufRead> EventLogParser<R> {
                 }))
             }
             _ => unreachable!("checked in outer match"),
+        }
+    }
+
+    fn parse_arena_start_end(&self, event_type: EventType, args: &str) -> Result<Event> {
+        let mut parser = EventArgParser::new(args, ',');
+
+        match event_type {
+            EventType::ArenaMatchStart => {
+                let instance_id = parser.next_numeric::<u32>()?;
+                let unk = parser.next_numeric::<u32>()?;
+                let match_type = parser.next_string()?.to_string();
+                let team_id = parser.next_numeric::<u32>()?;
+
+                Ok(Event::ArenaStart(ArenaStartEvent {
+                    instance_id,
+                    unk,
+                    match_type,
+                    team_id,
+                }))
+            }
+            EventType::ArenaMatchEnd => {
+                let winning_team = parser.next_boolean();
+                let match_duration = parser.next_numeric::<u32>()?;
+                let new_rating_team_one = parser.next_numeric::<u32>()?;
+                let new_rating_team_two = parser.next_numeric::<u32>()?;
+
+                Ok(Event::ArenaEnd(ArenaEndEvent {
+                    winning_team,
+                    match_duration,
+                    new_rating_team_one,
+                    new_rating_team_two,
+                }))
+            }
+            _ => unreachable!("checked in outer match"),
+        }
+    }
+
+    fn parse_world_marker_placed_removed(
+        &self,
+        event_type: EventType,
+        args: &str,
+    ) -> Result<Event> {
+        let mut parser = EventArgParser::new(args, ',');
+        match event_type {
+            EventType::WorldMarkerPlaced => {
+                let instance_id = parser.next_numeric::<u32>()?;
+                let marker = RaidFlag::try_from(parser.next_numeric::<u32>()?)?;
+                let x = parser.next_numeric::<f32>()?;
+                let y = parser.next_numeric::<f32>()?;
+
+                Ok(Event::WorldMarkerPlaced(WorldMarkerPlacedEvent {
+                    instance_id,
+                    marker,
+                    x,
+                    y,
+                }))
+            }
+            EventType::WorldMarkerRemoved => {
+                let raid_flag = RaidFlag::try_from(parser.next_numeric::<u32>()?)?;
+                Ok(Event::WorldMarkerRemoved(raid_flag))
+            }
+            _ => unreachable!("caught by outer match arm"),
         }
     }
 
@@ -283,6 +352,9 @@ impl<R: BufRead> EventLogParser<R> {
             EventType::SpellAuraBrokenSpell => Some(Suffix::AuraBrokenSpell(parser.aura_spell()?)),
             EventType::SpellEmpowerInterrupt | EventType::SpellEmpowerEnd => {
                 Some(Suffix::Empower(parser.next_numeric::<u32>()?))
+            }
+            EventType::EnchantRemoved | EventType::EnchantApplied => {
+                Some(Suffix::Enchant(parser.enchant()?))
             }
             _ => None,
         };
@@ -405,6 +477,18 @@ impl<'a> EventArgParser<'a> {
             map_id,
             facing,
             level,
+        })
+    }
+
+    pub fn enchant(&mut self) -> Result<EnchantEvent> {
+        let name = self.next_string()?.to_string();
+        let item_id = self.next_numeric::<u32>()?;
+        let item_name = self.next_string()?.to_string();
+
+        Ok(EnchantEvent {
+            name,
+            item_id,
+            item_name,
         })
     }
 
