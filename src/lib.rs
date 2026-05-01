@@ -53,3 +53,21 @@ impl LogFile {
         })
     }
 }
+
+#[cfg(test)]
+mod jastor_tests {
+    use super::*;
+
+    #[test]
+    fn it_parses_all_the_files_without_error() -> eyre::Result<()> {
+        let paths = std::fs::read_dir("./logs")?;
+
+        for path in paths {
+            let entry = path?;
+            eprintln!("Parsing {}", entry.path().display());
+            LogFile::parse(entry.path())?;
+        }
+
+        Ok(())
+    }
+}
