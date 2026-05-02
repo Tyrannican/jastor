@@ -898,8 +898,9 @@ impl std::fmt::Display for Faction {
 }
 
 #[repr(u16)]
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
 pub enum Difficulty {
+    #[default]
     NormalParty = 1,
     HeroicParty = 2,
     MythicKeystone = 8,
