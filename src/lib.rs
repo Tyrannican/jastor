@@ -6,6 +6,7 @@ pub mod types;
 use memmap::MmapOptions;
 use parser::{EventLogParser, ParsedEvent};
 use std::{io::BufReader, path::Path};
+
 pub struct LogFile;
 
 impl LogFile {
